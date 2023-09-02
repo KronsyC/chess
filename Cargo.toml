@@ -1,0 +1,33 @@
+[package]
+name = "chess_rs"
+version = "0.1.0"
+edition = "2021"
+
+
+[[bin]]
+name = "game"
+path = "src/bin/game.rs"
+
+[[bin]]
+name = "find_magics"
+path = "src/bin/find_magics.rs"
+
+
+[profile.release]
+lto = true
+opt-level = 3
+strip = "debuginfo"
+
+[profile.dev]
+opt-level = 1
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ansi_term = "0.12.1"
+rand = "0.8.5"
+rayon = "1.7.0"
+bitboard = {path = "./src/bitboard/"}
+
+[build-dependencies]
+bitboard = {path = "./src/bitboard/"}
