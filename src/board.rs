@@ -2,6 +2,7 @@ use crate::movement;
 use crate::piece::*;
 use bitboard::Bitboard;
 
+#[derive(Clone, Copy)]
 pub struct ChessBoard {
     pub kings: Bitboard,
     pub queens: Bitboard,
@@ -54,6 +55,47 @@ impl ChessBoard {
         }
     }
 
+    pub fn get_piece_legal_moves(&self, pos: u8, piece: PieceInfo) -> Bitboard {
+        let pseudo_moves = self.get_piece_pseudo_moves(pos, piece);
+        let pos_mask = Bitboard::from_piece_index(pos);
+
+        let mut ret = Bitboard::default();
+        for m in pseudo_moves.bit_masks() {
+
+            let mut state = self.clone();
+            // Step 1: Construct the post-move state
+            state.kill_piece(m);
+            let switch = m | pos_mask;
+            *state.get_mut_team_bb(piece.team) ^= switch;
+            *state.get_mut_piece_bb(piece.kind) ^= switch;
+
+            // Step 2: Check if the state is valid postmove state
+            //         for the team
+            if state.is_valid_postmove(piece.team) {
+                ret |= m;
+            }
+        }
+        ret
+    }
+
+    pub fn get_piece_info(&self, piece : u8) -> PieceInfo{
+        let b= Bitboard::from_piece_index(piece);
+        let f = |d : Bitboard| !(b & d).empty();
+
+        let team = if f(self.whites){ Team::White } else {Team::Black};
+
+        let kind = if f(self.bishops) {PieceKind::Bishop} 
+                   else if f(self.rooks) {PieceKind::Rook}
+                   else if f(self.pawns) {PieceKind::Pawn}
+                   else if f(self.kings) {PieceKind::King}
+                   else if f(self.knights) {PieceKind::Knight}
+                   else {PieceKind::Queen};
+
+        PieceInfo{
+            team : team,
+            kind : kind
+        }
+    }
     pub fn get_piece_pseudo_moves(&self, pos: u8, piece: PieceInfo) -> Bitboard {
         if cfg!(debug_assertions) {
             let bb = Bitboard::from_piece_index(pos);
@@ -67,8 +109,9 @@ impl ChessBoard {
                 pos,
                 piece
             );
-            println!("Get pseudo moves");
         }
+
+        let friends = self.team_pieces(piece.team);
 
         match piece.kind {
             PieceKind::Pawn => movement::pawn_moves(pos, piece.team, self.whites | self.blacks),
@@ -78,5 +121,94 @@ impl ChessBoard {
             PieceKind::Bishop => movement::bishop_moves(pos, self.whites | self.blacks),
             PieceKind::Knight => movement::knight_moves(pos),
         }
+        .where_not(friends)
+    }
+
+
+
+    fn get_mut_team_bb(&mut self, team : Team) -> &mut Bitboard{
+        match team{
+            Team::White => &mut self.whites,
+            Team::Black => &mut self.blacks
+        }
+    }
+
+    fn get_mut_piece_bb(&mut self, piece : PieceKind) -> &mut Bitboard{
+        match piece{
+            PieceKind::King => &mut self.kings,
+            PieceKind::Rook => &mut self.rooks,
+            PieceKind::Pawn => &mut self.pawns,
+            PieceKind::Queen => &mut self.queens,
+            PieceKind::Bishop => &mut self.bishops,
+            PieceKind::Knight => &mut self.knights
+        }
+    }
+
+    ///
+    /// Removes a piece from the bitboard 
+    /// if the piece doesn't exist, this acts as a no-op
+    ///
+    fn kill_piece(&mut self, pos : Bitboard){
+        // Hopefully this code gets vectorized
+        // 8 * u64 => 512 bit avx register
+        let neg = pos.negative();
+        self.kings &= neg;
+        self.queens &= neg;
+        self.rooks &= neg;
+        self.knights &= neg;
+        self.bishops &= neg;
+        self.pawns &= neg;
+        self.whites &= neg;
+        self.blacks &= neg;
+    }
+
+   
+    #[inline(never)]
+    fn is_valid_postmove(&self, team : Team) -> bool{
+
+
+        //
+        // A postmove state is invalid if the king is in check
+        //
+        // for most pieces, we project its legal moves out of the king 
+        // and check if any enemies exist in that area
+        //
+        // the exception is pawns, who cannot move symmetrically,
+        // so we directionally project based on the team
+        //
+
+        let world = self.whites | self.blacks;
+        let friendlies = self.team_pieces(team);
+        let friends_neg = friendlies.negative();
+
+
+        let team_king = self.pieces(PieceInfo{kind : PieceKind::King, team : team});
+
+        println!("Kings: {}", self.kings);
+        let king_idx = team_king.piece_index();
+
+        let moves_as_rook = movement::rook_moves(king_idx, world);
+        let moves_as_bish = movement::bishop_moves(king_idx, world);
+        let moves_as_knight = movement::knight_moves(king_idx);
+        let moves_as_king = movement::king_moves(king_idx);
+        let moves_from_pawn = movement::pawn_attackers(king_idx, team);
+      
+        // we have rooklikes and bishlikes, as queens act as a rook and bishop 
+        // this saves a movement::queen_moves call
+        let rooklikes = (self.rooks | self.queens) & friends_neg;
+        let bishlikes = (self.bishops | self.queens) & friends_neg;
+        let knights = self.knights & friends_neg;
+        let kings = self.kings & friends_neg;
+        let pawns = self.pawns & friends_neg;
+
+
+        let killer_rooks = moves_as_rook & rooklikes;
+        let killer_bishes = moves_as_bish & bishlikes;
+        let killer_knights = moves_as_knight & knights;
+        let killer_kings = moves_as_king & kings;
+        let killer_pawns = pawns & moves_from_pawn;
+
+
+        (killer_knights | killer_bishes | killer_rooks | killer_kings | killer_pawns).empty()
     }
 }

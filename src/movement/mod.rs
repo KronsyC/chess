@@ -1,4 +1,4 @@
-use crate::magic_bitboard::{bishops::BISHOP_MAGIC_INFO, rooks::ROOK_MAGIC_INFO};
+use crate::magic_bitboard::{bishops::BISHOP_MAGIC_INFO, rooks::ROOK_MAGIC_INFO, queens::QUEEN_MAGIC_INFO};
 use crate::piece::Team;
 use crate::precalc::masks::{B_PAWN_ATTACKS, KING_MOVEMENT, KNIGHT_MOVEMENT, W_PAWN_ATTACKS};
 
@@ -30,8 +30,12 @@ pub fn rook_moves(pos: u8, world: Bitboard) -> Bitboard {
     unsafe { *info.moves.get_unchecked(raw as usize) }
 }
 
-#[inline(never)]
+
+
 pub fn queen_moves(pos: u8, world: Bitboard) -> Bitboard {
+
+    use std::simd;
+    use std::simd::prelude::*;
     // TODO: Try to get this working to be faster than the current linear approach,
     // it may not be faster, but try
     // use packed_simd::u64x2;
@@ -43,91 +47,78 @@ pub fn queen_moves(pos: u8, world: Bitboard) -> Bitboard {
     //     )
     // };
     //
-    // let shifts = u64x2::from([bish_info.shift, rook_info.shift]);
-    // let masks = u64x2::from([bish_info.mask.data, rook_info.mask.data]);
-    // let mulls = u64x2::from([bish_info.multiplier, rook_info.multiplier]);
+    // let maskb = world.data & bish_info.mask.data;
+    // let maskr = world.data & rook_info.mask.data;
     //
-    // let masked = masks * world.data;
-    // let mulled = masked * mulls;
-    // let shifted = mulled >> shifts;
+    // let (mulb, _) = maskb.overflowing_mul(bish_info.multiplier);
+    // let (mulr, _) = maskr.overflowing_mul(rook_info.multiplier);
     //
-    // let mut a = [0u64; 2];
-    // {
-    //     let mut outs = a.as_mut_slice();
-    //     shifted.write_to_slice_unaligned(&mut outs);
-    // }
-    // let r = bish_info.moves[a[0] as usize].combine_with(rook_info.moves[a[1] as usize]);
+    // let shb = mulb >> bish_info.shift;
+    // let shr = mulr >> bish_info.shift;
     //
-    // println!("Outputs: {}", r);
-    // world
-    // use simd::prelude::*;
+    // let atkb = unsafe{bish_info.moves.get_unchecked(shb as usize)};
+    // let atkr = unsafe{rook_info.moves.get_unchecked(shr as usize)};
     //
-    // let raw_world = world.data;
-    //
-    // use std::simd;
-    // let worlds = simd::u64x2::from_array([raw_world, raw_world]);
-    // let masks = simd::u64x2::from_array([rook_info.mask.data, bish_info.mask.data]);
-    // let mults = simd::u64x2::from_array([rook_info.multiplier, bish_info.multiplier]);
-    // let shifts = simd::u64x2::from_array([rook_info.shift, bish_info.shift]);
-    //
-    // let masked_worlds = masks & worlds;
-    // let mulled_worlds = masked_worlds * mults;
-    // let shifted_worlds = mulled_worlds >> shifts;
-    // let [i1, i2] = shifted_worlds.as_array();
-    //
-    //
-    // unsafe{
-    // let b1 = *rook_info.moves.get_unchecked(*i1 as usize);
-    // let b2 = *bish_info.moves.get_unchecked(*i2 as usize);
-    // return b1.combine_with(b2);
-    // }
+    // return atkb.combine_with(*atkr);
 
-    let rook_aspect = rook_moves(pos, world);
-    let bishop_aspect = bishop_moves(pos, world);
 
-    rook_aspect.combine_with(bishop_aspect)
+    let info = unsafe{QUEEN_MAGIC_INFO.get_unchecked(pos as usize)};
+    let worlds = simd::u64x2::from_array([world.data, world.data]);
+    let masked = info.mask & worlds;
+    let mulled = masked * info.multiplier;
+    let shifted = mulled >> info.shift;
+    let keymasked = shifted & info.keymask;
+    let pointers = info.moves.wrapping_add(keymasked.cast());
 
-    //a550:       40 0f b6 c7             movzbl %dil,%eax
-    //a554:       48 c1 e0 03             shl    $0x3,%rax
-    //a558:       48 8d 04 80             lea    (%rax,%rax,4),%rax
-    //a55c:       48 8d 15 b5 cb 11 00    lea    0x11cbb5(%rip),%rdx        # 127118 <_ZN9ansi_term4ansi5RESET17h75976bfb87b4cb84E+0xc28>
-    //a563:       48 8b 7c 02 20          mov    0x20(%rdx,%rax,1),%rdi
-    //a568:       48 21 f7                and    %rsi,%rdi
-    //a56b:       48 0f af 7c 02 10       imul   0x10(%rdx,%rax,1),%rdi
-    //a571:       0f b6 4c 02 18          movzbl 0x18(%rdx,%rax,1),%ecx
-    //a576:       48 d3 ef                shr    %cl,%rdi
-    //a579:       48 8b 14 02             mov    (%rdx,%rax,1),%rdx
-    //a57d:       4c 8d 05 94 c1 11 00    lea    0x11c194(%rip),%r8        # 126718 <_ZN9ansi_term4ansi5RESET17h75976bfb87b4cb84E+0x228>
-    //a584:       49 23 74 00 20          and    0x20(%r8,%rax,1),%rsi
-    //a589:       49 0f af 74 00 10       imul   0x10(%r8,%rax,1),%rsi
-    //a58f:       41 0f b6 4c 00 18       movzbl 0x18(%r8,%rax,1),%ecx
-    //a595:       48 d3 ee                shr    %cl,%rsi
-    //a598:       49 8b 04 00             mov    (%r8,%rax,1),%rax
-    //a59c:       48 8b 04 f0             mov    (%rax,%rsi,8),%rax
-    //a5a0:       48 0b 04 fa             or     (%rdx,%rdi,8),%rax
-    //a5a4:       c3                      ret
+    let [p1, p2] = pointers.to_array();
+
+    unsafe{
+        let bishop_aspect = *p1;
+        let rook_aspect = *p2;
+        return Bitboard::from_bits(bishop_aspect | rook_aspect);
+    }
+    // let bish_moves = unsafe{info.bish_moves.get_unchecked(bish_idx as usize)};
+    // let rook_moves = unsafe{info.rook_moves.get_unchecked(rook_idx as usize)};
+    // return bish_moves.combine_with(*rook_moves);
 }
 
 pub fn pawn_moves(pos: u8, team: Team, world: Bitboard) -> Bitboard {
     let free_spots = world.negative();
+    let piece = Bitboard::from_piece_index(pos);
     match team {
         Team::White => unsafe {
-            let mut moves = Bitboard::from_piece_index(pos)
+            let mut moves = piece
                 .shift_up()
                 .where_also(free_spots);
-            moves = moves.combine_with(moves.shift_up().where_also(free_spots));
+
+            if !(piece & Bitboard::WHITE_PAWNS_HOME).empty() {
+                moves = moves.combine_with(moves.shift_up().where_also(free_spots));
+            }
             moves =
                 moves.combine_with((*W_PAWN_ATTACKS.get_unchecked(pos as usize)).where_also(world));
             return moves;
         },
         Team::Black => unsafe {
-            let mut moves = Bitboard::from_piece_index(pos)
+            let mut moves = piece
                 .shift_down()
                 .where_also(free_spots);
-            moves = moves.combine_with(moves.shift_down().where_also(free_spots));
+            if !(piece & Bitboard::BLACK_PAWNS_HOME).empty() {
+                moves = moves.combine_with(moves.shift_down().where_also(free_spots));
+            }
             moves =
                 moves.combine_with((*B_PAWN_ATTACKS.get_unchecked(pos as usize)).where_also(world));
             return moves;
         },
+    }
+}
+
+///
+/// Yields the positions from which pawns may attack you 
+/// the team argument is the team of your piece
+///
+pub fn pawn_attackers(pos : u8, team : Team) -> Bitboard{
+    match team{
+        Team::White => unsafe{ *W_PAWN_ATTACKS.get_unchecked(pos as usize) },
+        Team::Black => unsafe{ *B_PAWN_ATTACKS.get_unchecked(pos as usize) }
     }
 }

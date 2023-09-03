@@ -108,15 +108,24 @@ impl Bitboard {
             data: u64::from_be_bytes(dat),
         }
     }
+    #[rustfmt::skip]
     pub const fn with_cols(c1: u8, c2: u8, c3: u8, c4: u8, c5: u8, c6: u8, c7: u8, c8: u8) -> Self {
-        let r1 = c1 >> 0 | c2 << 1 | c3 << 2 | c4 << 3 | c5 << 4 | c6 << 5 | c7 << 6 | c8 << 7;
-        let r2 = c1 >> 1 | c2 << 0 | c3 << 1 | c4 << 2 | c5 << 3 | c6 << 4 | c7 << 5 | c8 << 6;
-        let r3 = c1 >> 2 | c2 >> 1 | c3 << 0 | c4 << 1 | c5 << 2 | c6 << 3 | c7 << 4 | c8 << 5;
-        let r4 = c1 >> 3 | c2 >> 2 | c3 >> 1 | c4 << 0 | c5 << 1 | c6 << 2 | c7 << 3 | c8 << 4;
-        let r5 = c1 >> 4 | c2 >> 3 | c3 >> 2 | c4 >> 1 | c5 << 0 | c6 << 1 | c7 << 2 | c8 << 3;
-        let r6 = c1 >> 5 | c2 >> 4 | c3 >> 3 | c4 >> 2 | c5 >> 1 | c6 << 0 | c7 << 1 | c8 << 2;
-        let r7 = c1 >> 6 | c2 >> 5 | c3 >> 4 | c4 >> 3 | c5 >> 2 | c6 >> 1 | c7 << 0 | c8 << 1;
-        let r8 = c1 >> 7 | c2 >> 6 | c3 >> 5 | c4 >> 4 | c5 >> 3 | c6 >> 2 | c7 >> 1 | c8 << 0;
+        let b1 : u8 = 0b00000001;
+        let b2 : u8 = 0b00000010;
+        let b3 : u8 = 0b00000100;
+        let b4 : u8 = 0b00001000;
+        let b5 : u8 = 0b00010000;
+        let b6 : u8 = 0b00100000;
+        let b7 : u8 = 0b01000000;
+        let b8 : u8 = 0b10000000;
+        let r1 = c1 >> 0 & b1 | c2 << 1 & b2 | c3 << 2 & b3 | c4 << 3 & b4 | c5 << 4 & b5 | c6 << 5 & b6 | c7 << 6 & b7 | c8 << 7 & b8;
+        let r2 = c1 >> 1 & b1 | c2 << 0 & b2 | c3 << 1 & b3 | c4 << 2 & b4 | c5 << 3 & b5 | c6 << 4 & b6 | c7 << 5 & b7 | c8 << 6& b8;
+        let r3 = c1 >> 2 & b1 | c2 >> 1 & b2 | c3 << 0 & b3 | c4 << 1 & b4 | c5 << 2 & b5 | c6 << 3 & b6 | c7 << 4 & b7 | c8 << 5& b8;
+        let r4 = c1 >> 3 & b1 | c2 >> 2 & b2 | c3 >> 1 & b3 | c4 << 0 & b4 | c5 << 1 & b5 | c6 << 2 & b6 | c7 << 3 & b7 | c8 << 4& b8;
+        let r5 = c1 >> 4 & b1 | c2 >> 3 & b2 | c3 >> 2 & b3 | c4 >> 1 & b4 | c5 << 0 & b5 | c6 << 1 & b6 | c7 << 2 & b7 | c8 << 3& b8;
+        let r6 = c1 >> 5 & b1 | c2 >> 4 & b2 | c3 >> 3 & b3 | c4 >> 2 & b4 | c5 >> 1 & b5 | c6 << 0 & b6 | c7 << 1 & b7 | c8 << 2& b8;
+        let r7 = c1 >> 6 & b1 | c2 >> 5 & b2 | c3 >> 4 & b3 | c4 >> 3 & b4 | c5 >> 2 & b5 | c6 >> 1 & b6 | c7 << 0 & b7 | c8 << 1& b8;
+        let r8 = c1 >> 7 & b1 | c2 >> 6 & b2 | c3 >> 5 & b3 | c4 >> 4 & b4 | c5 >> 3 & b5 | c6 >> 2 & b6 | c7 >> 1 & b7 | c8 << 0& b8;
         Self::with_rows(r1, r2, r3, r4, r5, r6, r7, r8)
     }
 
@@ -305,16 +314,43 @@ impl Bitboard {
         idxes
     }
 
+    ///
+    /// Returns an iterator of masks,
+    /// where each mask contains a single set bit from the board
+    ///
+    pub fn bit_masks(self) -> Bitmasks {
+        Bitmasks::new(self)
+    }
     pub fn mask_permutations(self) -> MaskPermutations {
         MaskPermutations::new(self)
     }
 
-    pub const fn from_bits(bits : u64) -> Bitboard{
-        Bitboard{
-            data : bits
-        }
+    pub const fn from_bits(bits: u64) -> Bitboard {
+        Bitboard { data: bits }
     }
+}
 
+pub struct Bitmasks {
+    mask: Bitboard,
+}
+
+impl Bitmasks {
+    pub fn new(mask: Bitboard) -> Self {
+        Self { mask: mask }
+    }
+}
+
+impl Iterator for Bitmasks {
+    type Item = Bitboard;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.mask.data == 0 {
+            return None;
+        }
+        let raw = self.mask.data;
+        let count = raw.trailing_zeros();
+        self.mask = Bitboard::from_bits(raw & !(1 << count));
+        Some(Bitboard::from_piece_index(count as u8))
+    }
 }
 
 pub struct MaskPermutations {
@@ -325,16 +361,16 @@ pub struct MaskPermutations {
 }
 
 impl MaskPermutations {
-    fn new(mask: Bitboard) -> MaskPermutations{
+    fn new(mask: Bitboard) -> MaskPermutations {
         let count = mask.count();
         let mut bytes = Vec::<bool>::with_capacity(count as usize);
         bytes.resize(count as usize, false);
 
-        MaskPermutations{
-            mask : mask,
-            idx : 0,
-            bytes : bytes,
-            bit_indexes : mask.bit_indexes()
+        MaskPermutations {
+            mask: mask,
+            idx: 0,
+            bytes: bytes,
+            bit_indexes: mask.bit_indexes(),
         }
     }
 }
@@ -376,12 +412,31 @@ impl ops::BitOr for Bitboard {
         }
     }
 }
+
 impl ops::BitAnd for Bitboard {
     type Output = Self;
     fn bitand(self, rhs: Self) -> Self::Output {
         Self {
             data: self.data & rhs.data,
         }
+    }
+}
+
+impl ops::BitAndAssign for Bitboard {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.data &= rhs.data;
+    }
+}
+
+impl ops::BitXorAssign for Bitboard {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.data ^= rhs.data;
+    }
+}
+
+impl ops::BitOrAssign for Bitboard {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.data |= rhs.data;
     }
 }
 

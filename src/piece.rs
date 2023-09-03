@@ -13,6 +13,16 @@ pub enum Team{
     Black
 }
 
+
+impl Team{
+    pub fn enemy(self) -> Team{
+        match self{
+            Team::Black => Team::White,
+            Team::White => Team::Black
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct PieceInfo{
     pub kind : PieceKind,
