@@ -7,7 +7,7 @@ pub enum PieceKind{
     Knight,
     Pawn
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Team{
     White,
     Black

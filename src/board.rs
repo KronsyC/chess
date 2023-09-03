@@ -2,7 +2,7 @@ use crate::movement;
 use crate::piece::*;
 use bitboard::Bitboard;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ChessBoard {
     pub kings: Bitboard,
     pub queens: Bitboard,
@@ -162,44 +162,23 @@ impl ChessBoard {
         self.blacks &= neg;
     }
 
-   
-    #[inline(never)]
-    fn is_valid_postmove(&self, team : Team) -> bool{
-
-
-        //
-        // A postmove state is invalid if the king is in check
-        //
-        // for most pieces, we project its legal moves out of the king 
-        // and check if any enemies exist in that area
-        //
-        // the exception is pawns, who cannot move symmetrically,
-        // so we directionally project based on the team
-        //
-
+    pub fn is_pos_attacked(&self, pos : u8, attacked_by : Team) -> bool{
         let world = self.whites | self.blacks;
-        let friendlies = self.team_pieces(team);
-        let friends_neg = friendlies.negative();
+        let enemies = self.team_pieces(attacked_by);
 
-
-        let team_king = self.pieces(PieceInfo{kind : PieceKind::King, team : team});
-
-        println!("Kings: {}", self.kings);
-        let king_idx = team_king.piece_index();
-
-        let moves_as_rook = movement::rook_moves(king_idx, world);
-        let moves_as_bish = movement::bishop_moves(king_idx, world);
-        let moves_as_knight = movement::knight_moves(king_idx);
-        let moves_as_king = movement::king_moves(king_idx);
-        let moves_from_pawn = movement::pawn_attackers(king_idx, team);
+        let moves_as_rook = movement::rook_moves(pos, world);
+        let moves_as_bish = movement::bishop_moves(pos, world);
+        let moves_as_knight = movement::knight_moves(pos);
+        let moves_as_king = movement::king_moves(pos);
+        let moves_from_pawn = movement::pawn_attackers(pos, attacked_by.enemy());
       
         // we have rooklikes and bishlikes, as queens act as a rook and bishop 
         // this saves a movement::queen_moves call
-        let rooklikes = (self.rooks | self.queens) & friends_neg;
-        let bishlikes = (self.bishops | self.queens) & friends_neg;
-        let knights = self.knights & friends_neg;
-        let kings = self.kings & friends_neg;
-        let pawns = self.pawns & friends_neg;
+        let rooklikes = (self.rooks | self.queens) & enemies;
+        let bishlikes = (self.bishops | self.queens) & enemies;
+        let knights = self.knights & enemies;
+        let kings = self.kings & enemies;
+        let pawns = self.pawns & enemies;
 
 
         let killer_rooks = moves_as_rook & rooklikes;
@@ -209,6 +188,15 @@ impl ChessBoard {
         let killer_pawns = pawns & moves_from_pawn;
 
 
-        (killer_knights | killer_bishes | killer_rooks | killer_kings | killer_pawns).empty()
+        !(killer_knights | killer_bishes | killer_rooks | killer_kings | killer_pawns).empty()
+    } 
+    #[inline(never)]
+    fn is_valid_postmove(&self, team : Team) -> bool{
+
+        let team_king = self.pieces(PieceInfo{kind : PieceKind::King, team : team});
+
+        let king_idx = team_king.piece_index();
+
+        return !self.is_pos_attacked(king_idx, team.enemy());
     }
 }
