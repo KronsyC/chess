@@ -60,16 +60,16 @@ fn generate_precalc_src(piece: SlidingPiece) -> String {
 
     let mut src = String::new();
     src += "use super::util::Magic;\n";
-    src += "use crate::precalc::masks::ROOK_MOVEMENT;\n";
     src += "use bitboard::Bitboard;";
+    src += &format!("use crate::precalc::masks::{}_MOVEMENT;\n", piece.to_str().to_uppercase());
     src += "\n";
-    src += "pub const ROOK_MAGIC_INFO : [Magic;64] = [\n";
+    src += &format!("pub const {}_MAGIC_INFO : [Magic;64] = [\n", piece.to_str().to_uppercase());
     for (idx, (atk, magic)) in attacks.iter().zip(magics).enumerate() {
         let r : String = atk
             .iter()
             .map(|a| format!("Bitboard::from_bits({}),", a.data))
             .fold(String::new(), |p, n| p.clone() + &n);
-        let mask = format!("ROOK_MOVEMENT[{}]", idx);
+        let mask = format!("{}_MOVEMENT[{}]", piece.to_str().to_uppercase(), idx);
         let moves = format!("&[{}]", r);
         src += &format!(
             "Magic{{ multiplier : {}, shift : {}, mask : {}, moves : {} }},\n",
@@ -83,8 +83,16 @@ fn generate_precalc_src(piece: SlidingPiece) -> String {
 
 fn main() {
     println!("cargo:rerun-if-changed=data");
+
     let rooks_magics = generate_precalc_src(SlidingPiece::Rook);
     let mut rooks_magics_f = File::create("src/magic_bitboard/rooks.rs").unwrap();
     rooks_magics_f.write_all(rooks_magics.as_bytes()).unwrap();
-    // panic!("BUILDING THE PROGRAM: {:?}, {:?}", rook_magics, rook_attacks);
+
+    let bishops_magics = generate_precalc_src(SlidingPiece::Bishop);
+    let mut bishops_magics_f = File::create("src/magic_bitboard/bishops.rs").unwrap();
+    bishops_magics_f.write_all(bishops_magics.as_bytes()).unwrap();
+
+    // let queens_magics = generate_precalc_src(SlidingPiece::Queen);
+    // let mut queens_magics_f = File::create("src/magic_bitboard/queens.rs").unwrap();
+    // queens_magics_f.write_all(queens_magics.as_bytes()).unwrap();
 }

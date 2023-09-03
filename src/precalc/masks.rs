@@ -1,6 +1,6 @@
-use bitboard::Bitboard;
 use crate::coord::Coord;
 use crate::piece::Team;
+use bitboard::Bitboard;
 
 pub type PrecalcBB = [Bitboard; 64];
 
@@ -9,6 +9,8 @@ pub const KING_MOVEMENT: PrecalcBB = precalc_king_moves();
 pub const W_PAWN_ATTACKS: PrecalcBB = precalc_pawn_attack_mask(Team::White);
 pub const B_PAWN_ATTACKS: PrecalcBB = precalc_pawn_attack_mask(Team::Black);
 pub const ROOK_MOVEMENT: PrecalcBB = precalc_rook_masks();
+pub const BISHOP_MOVEMENT : PrecalcBB = precalc_bishop_masks();
+pub const QUEEN_MOVEMENT : PrecalcBB = precalc_queen_masks();
 
 const fn offset(index: usize, cols: isize, rows: isize) -> Bitboard {
     let col = (index as isize) % 8;
@@ -94,8 +96,6 @@ const fn precalc_pawn_attack_mask(team: Team) -> [Bitboard; 64] {
                 board = board.combine_with(offset(i, -1, 1));
             }
             Team::Black => {
-                board = board.combine_with(offset(i, -1, -1));
-                board = board.combine_with(offset(i, 1, -1));
             }
         }
 
@@ -113,8 +113,8 @@ const fn precalc_rook_mask(idx: u8) -> Bitboard {
     let up_count = if row == 7 { 0 } else { 6 - row };
     let down_count = if row == 0 { 0 } else { row - 1 };
 
-    let right_count = if col == 0 { 0 } else { col - 1 };
-    let left_count = if col == 7 { 0 } else { 6 - col };
+    let right_count = if col == 7 { 0 } else { 6 - col  };
+    let left_count = if col == 0 { 0 } else { col - 1 };
 
     let up = board.ray_up(up_count);
     let down = board.ray_down(down_count);
@@ -144,3 +144,99 @@ const fn precalc_rook_masks() -> [Bitboard; 64] {
     boards
 }
 
+const fn min(a: u8, b: u8) -> u8 {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+
+const fn precalc_bishop_mask(idx: u8) -> Bitboard {
+    let Coord { row, col } = Coord::from_idx(idx);
+
+    let board = Bitboard::from_piece_index(idx);
+
+    let up_count = if row == 7 { 0 } else { 6 - row };
+    let down_count = if row == 0 { 0 } else { row - 1 };
+    let right_count = if col == 7 { 0 } else { 6 - col };
+    let left_count = if col == 0 {0} else {col - 1};
+
+    let mut upleft_count = min(up_count, left_count);
+    let mut upright_count = min(up_count, right_count);
+    let mut downleft_count = min(down_count, left_count);
+    let mut downright_count = min(down_count, right_count);
+
+    let mut upleft = board.data;
+    let mut upright = board.data;
+    let mut downleft = board.data;
+    let mut downright = board.data;
+
+    loop{
+        if upleft_count == 0{
+            break;
+        }
+        upleft_count-=1;
+        upleft |= upleft << 7;
+    }
+    loop{
+        if upright_count == 0{
+            break;
+        }
+        upright_count-=1;
+        upright |= upright << 9;
+    }
+    loop{
+        if downleft_count == 0{
+            break;
+        }
+        downleft_count-=1;
+        downleft |= downleft >> 9;
+    }
+    loop{
+        if downright_count == 0{
+            break;
+        }
+        downright_count-=1;
+        downright |= downright >> 7;
+    }
+
+    Bitboard::const_default()
+        .combine_with(Bitboard::from_bits(upleft))
+        .combine_with(Bitboard::from_bits(upright))
+        .combine_with(Bitboard::from_bits(downleft))
+        .combine_with(Bitboard::from_bits(downright))
+        .where_not(board)
+}
+const fn precalc_bishop_masks() -> [Bitboard; 64] {
+    let mut i = 0u8;
+
+    let mut boards = [Bitboard::const_default(); 64];
+    loop {
+        if i == 64 {
+            break;
+        }
+
+        boards[i as usize] = precalc_bishop_mask(i);
+
+        i += 1;
+    }
+
+    boards
+}
+
+const fn precalc_queen_masks() -> [Bitboard;64]{
+    let mut ret = [Bitboard::const_default();64];
+    let rooks = precalc_rook_masks();
+    let bishops = precalc_bishop_masks();
+    let mut i = 0;
+    
+    loop{
+        if i == 64{
+            break;
+        }
+        ret[i] = rooks[i].combine_with(bishops[i]);
+        i+=1;
+    }
+    ret
+}

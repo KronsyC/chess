@@ -250,7 +250,7 @@ impl Bitboard {
         Bitboard { data: d }
     }
     ///
-    /// Effectively a series of n shifts right which are or'd together
+    /// Effectively a series of n shifts left which are or'd together
     /// the initial bit is not preserved
     ///
     #[inline(always)]
@@ -262,7 +262,7 @@ impl Bitboard {
                 break;
             }
             let before = d;
-            d |= self.data >> (i + 1);
+            d |= self.data << (i + 1);
 
             assert!(d != before, "Out of bounds shift");
             i += 1;
@@ -270,7 +270,7 @@ impl Bitboard {
         Bitboard { data: d }
     }
     ///
-    /// Effectively a series of n shifts left which are or'd together
+    /// Effectively a series of n shifts right which are or'd together
     /// the initial bit is not preserved
     ///
     #[inline(always)]
@@ -282,7 +282,7 @@ impl Bitboard {
                 break;
             }
             let before = d;
-            d |= self.data << (i + 1);
+            d |= self.data >> (i + 1);
 
             assert!(d != before, "Out of bounds shift");
             i += 1;
