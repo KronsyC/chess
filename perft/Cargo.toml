@@ -1,0 +1,18 @@
+[package]
+name = "libchess_perft"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libchess = {path = "../libchess/"}
+rayon = "1.10.0"
+
+
+[[bench]]
+name = "perft"
+harness = false
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+libchess = {path = "../libchess/"}
+rayon = "1.10.0"
