@@ -1,7 +1,9 @@
 
 
 [workspace]
-members = [ "libchess", "perft",
+members = [ 
+  "libchess",
+  "perft",
   "positioning"
 ]
 

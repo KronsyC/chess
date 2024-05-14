@@ -1,5 +1,6 @@
 #![feature(portable_simd)]
 
+pub mod zobrist;
 pub mod position;
 pub mod piece;
 pub mod board;

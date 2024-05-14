@@ -12,6 +12,9 @@ path = "src/bin/game.rs"
 name = "find_magics"
 path = "src/bin/find_magics.rs"
 
+[features]
+zobrist = []
+
 [dependencies]
 rand = "0.8.5"
 rayon = {version="1.7.0"}

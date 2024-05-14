@@ -92,5 +92,4 @@ pub fn perft(game : libchess::game::Game, limit : u32) -> PerftResults{
     else{
         PerftResults::default()
     }
-  
 }
