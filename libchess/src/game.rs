@@ -166,6 +166,18 @@ impl Default for Game {
 }
 
 impl Game {
+
+    // pub fn from_fen_str(fen : &str) -> Self{
+    //     let mut parts = fen.split(" ");
+    //     let board = parts.next().unwrap();
+    //     let side = parts.next().unwrap();
+    //     let castling = parts.next().unwrap();
+    //     let ep = parts.next().unwrap();
+    //     let halfmoves = parts.next().unwrap();
+    //     let fullmoves = parts.next().unwrap();
+    //
+    //     
+    // }
     pub fn to_fen_str(&self) -> String {
         let bs = self.board.to_fen();
         let side = match self.state {

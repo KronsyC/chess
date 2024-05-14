@@ -1,5 +1,11 @@
 use rayon::prelude::*;
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PerftKey{
+    depth : u32,
+    hash : libchess::zobrist::ZobristHash
+}
+
 #[derive(Clone, Debug)]
 pub struct PerftResults{
     pub captures : u64,
@@ -40,16 +46,25 @@ impl Default for PerftResults{
         }
     }
 }
-
-pub fn perft(game : libchess::game::Game, limit : u32) -> PerftResults{
-
-    if limit == 0{
-        return PerftResults::default();
+use libchess::zobrist::ZobristHash;
+fn _perft(
+    game : libchess::game::Game,
+    depth : u32,
+    #[cfg(feature="zobrist")] map : &dashmap::DashMap<PerftKey, PerftResults>,
+    #[cfg(feature="zobrist")] hash : libchess::zobrist::ZobristHash,
+    #[cfg(feature="zobrist")] zkeys : &libchess::zobrist::ZobKeys
+) -> PerftResults{
+    #[cfg(feature = "zobrist")]
+    if let Some(val) =  map.get(&PerftKey{
+        hash : hash.clone(),
+        depth
+    }){
+            return val.clone();
     }
     let mut mb = Vec::new();
     mb.reserve(80);
     if let Ok(moves) = game.get_all_moves(&mut mb){
-        if limit == 1{
+        if depth == 1{
             let mut captures = 0;
             let mut castles = 0;
             let mut enpassant = 0;
@@ -83,13 +98,48 @@ pub fn perft(game : libchess::game::Game, limit : u32) -> PerftResults{
             };
         }
 
-        moves.par_iter().map(|mov| {
+        moves.iter().map(|mov| {
             let mut cl = game.clone();
+            #[cfg(feature = "zobrist")]
+            let hcl = {
+                let mut hcl = hash.clone();
+                cl.make_move(*mov, &mut hcl, zkeys);
+                hcl
+            };
+
+            #[cfg(not(feature = "zobrist"))]
             cl.make_move(*mov);
-            perft(cl, limit - 1)
+            let v = _perft(
+                cl,
+                depth - 1,
+                #[cfg(feature = "zobrist")] map,
+                #[cfg(feature = "zobrist")] hcl.clone(),
+                #[cfg(feature = "zobrist")] zkeys,
+            );
+            
+            #[cfg(feature = "zobrist")]
+            map.insert(PerftKey{
+                hash : hcl,
+                depth
+            }, v.clone());
+            v
         }).sum()
     }
     else{
         PerftResults::default()
     }
+}
+
+pub fn perft(
+    game : libchess::game::Game,
+    limit : u32,
+    #[cfg(feature = "zobrist")] zkeys : &libchess::zobrist::ZobKeys
+    ) -> PerftResults{
+    _perft(
+        game,
+        limit,
+        #[cfg(feature = "zobrist")] &dashmap::DashMap::new(),
+        #[cfg(feature = "zobrist")] game.get_zobrist_hash(zkeys).unwrap(),
+        #[cfg(feature = "zobrist")] zkeys
+    )
 }

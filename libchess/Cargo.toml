@@ -7,13 +7,18 @@ edition = "2021"
 [[bin]]
 name = "game"
 path = "src/bin/game.rs"
+features = [
+  "zobrist"
+]
 
 [[bin]]
 name = "find_magics"
 path = "src/bin/find_magics.rs"
 
 [features]
-zobrist = []
+zobrist = [
+  "libchess_perft/zobrist"
+]
 
 [dependencies]
 rand = "0.8.5"
@@ -24,3 +29,6 @@ smallvec = { version = "1.13.2", features = ["arbitrary"] }
 
 [build-dependencies]
 positioning = {path = "../positioning/"}
+
+[dev-dependencies]
+libchess_perft = {path = "../perft/"}

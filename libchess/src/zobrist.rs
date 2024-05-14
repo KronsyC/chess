@@ -37,14 +37,15 @@ pub struct ZobKeys{
     pub enpassant_h : ZKey,
 }
 
+type HashT = u64;
 
 pub struct ZKeySet([ZKey; 64]);
 
 #[derive(Clone, Copy, Debug)]
-pub struct ZKey(u64);
+pub struct ZKey(HashT);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ZobristHash(u64);
+pub struct ZobristHash(HashT);
 
 impl ZobristHash{
     pub fn update(&mut self, key : ZKey){
@@ -52,6 +53,7 @@ impl ZobristHash{
         self.0 ^= key.0;
     }
 }
+
 
 
 impl Default for ZobristHash{
@@ -62,7 +64,8 @@ impl Default for ZobristHash{
 
 impl ZKey{
     pub fn generate(rng : &mut impl rand::Rng) -> ZKey{
-        ZKey(rng.next_u64() & rng.next_u64())
+        ZKey(rng.gen::<HashT>())
+        // ZKey(rng.gen::<HashT>() & rng.gen::<HashT>() & rng.gen::<HashT>())
     }
 }
 
