@@ -45,6 +45,17 @@ pub enum GameMove {
     Capture(RawMove),
 }
 
+
+impl GameMove{
+    // pub fn smith(&self) -> String{
+    //     match self{
+    //         Self::Regular(m) => {
+    //
+    //         }
+    //     }
+    // }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum GameState {
     WhiteToMove,
@@ -110,6 +121,44 @@ impl Default for Game {
 
 impl Game {
 
+    pub fn to_fen_str(&self) -> String{
+        let bs = self.board.to_fen();
+        let side = match self.state{
+            GameState::WhiteToMove => 'w',
+            GameState::BlackToMove => 'b',
+            _ => '-'
+        };
+
+        let castling = {
+            let mut s = String::new();
+            if self.castling.white_kingside{
+                s += "K";
+            }
+            if self.castling.white_queenside{
+                s += "Q";
+            }
+            if self.castling.black_kingside{
+                s += "k";
+            }
+            if self.castling.black_queenside{
+                s += "q";
+            }
+            if s.len() == 0{
+                s += "-";
+            }
+            s
+        };
+
+        let ep = if self.enpassant.empty(){
+            "-".to_owned()
+        }            
+        else{
+            self.enpassant.piece_position().as_alphanum()
+        };
+
+
+        format!("{bs} {side} {castling} {ep} {} {}", self.halfmove_num, self.fullmove_num)
+    }
     pub fn get_active_team(&self) -> Option<Team>{
         match self.state{
             GameState::WhiteToMove => Some(Team::White),
@@ -136,6 +185,33 @@ impl Game {
         check && king_moves.empty()
     }
 
+
+    fn handle_cap_side_effects(&mut self, piece : PieceInfo, from : Position, to : Position, cap : PieceInfo){ 
+        use Team::*;
+        use PieceKind::*;
+        assert_eq!(piece.team.enemy(), cap.team, "Capturing Enemy");
+        match (cap.team, cap.kind){
+            (White, Rook) => {
+                match to.integral(){
+                    0 => {
+                        self.castling.white_queenside = false
+                    },
+                    7 => self.castling.white_kingside = false,
+                    _ => {}
+                }
+            },
+            (Black, Rook) => {
+                match to.integral(){
+                    56 => self.castling.black_queenside = false,
+                    63 => self.castling.black_kingside = false,
+                    _ => {}
+                }
+            },
+            (_, _) => {}
+        }
+
+        self.halfmove_num = 0;
+    }
     fn handle_move_side_effects(&mut self, piece : PieceInfo, from : Position, to : Position){
         self.enpassant = Bitboard::default();
         match (piece.kind, piece.team){
@@ -156,7 +232,7 @@ impl Game {
             },
             (PieceKind::Rook, Team::Black) => {
                 match from.integral(){
-                    55 => self.castling.black_queenside = false,
+                    56 => self.castling.black_queenside = false,
                     63 => self.castling.black_kingside = false,
                     _ => {}
                 }
@@ -188,6 +264,12 @@ impl Game {
                 }
             }
         }
+        match piece.kind{
+            PieceKind::Pawn => {
+                self.halfmove_num = 0
+            },
+            _ => self.halfmove_num += 1
+        }
         
     }
 
@@ -200,27 +282,20 @@ impl Game {
                 *self.board.get_mut_team_bb_rt(mov.piece.team) ^= switch;
                 *self.board.get_mut_piece_bb_rt(mov.piece.kind) ^= switch;
 
-                
-
                 self.handle_move_side_effects(mov.piece, mov.from, mov.to);
 
-                if mov.piece.kind == PieceKind::Pawn{
-                    self.halfmove_num = 0;
-                }
-                else{
-                    self.halfmove_num+=1;
-                }
             },
             GameMove::Capture(mov) => {
                 
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);
 
+                let cap_pi = self.board.get_piece_info(mov.to).unwrap();
+
                 self.mask(Bitboard::from(mov.to).negative());
                 *self.board.get_mut_team_bb_rt(mov.piece.team) ^= switch;
                 *self.board.get_mut_piece_bb_rt(mov.piece.kind) ^= switch;
                 self.handle_move_side_effects(mov.piece, mov.from, mov.to);
-
-                self.halfmove_num = 0;
+                self.handle_cap_side_effects(mov.piece, mov.from, mov.to, cap_pi);
             },
             GameMove::Promote { promotion, mov } => {
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);
@@ -237,12 +312,12 @@ impl Game {
 
                 *pbb |= Bitboard::from(mov.to);
                 self.handle_move_side_effects(mov.piece, mov.from, mov.to);
-                self.halfmove_num=0;
             },
             GameMove::CapturePromote { promotion, mov } => {
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);
-                self.mask(Bitboard::from(mov.to).negative());
+                let cap_pi = self.board.get_piece_info(mov.to).unwrap();
 
+                self.mask(Bitboard::from(mov.to).negative());
                 *self.board.get_mut_team_bb_rt(mov.piece.team) ^= switch;
 
                 self.mask(Bitboard::from(mov.from).negative());
@@ -257,7 +332,7 @@ impl Game {
                 *pbb |= Bitboard::from(mov.to);
 
                 self.handle_move_side_effects(mov.piece, mov.from, mov.to);
-                self.halfmove_num=0;
+                self.handle_cap_side_effects(mov.piece, mov.from, mov.to, cap_pi);
             },
             GameMove::Enpassant(mov) => {
 
@@ -266,13 +341,20 @@ impl Game {
                     Team::Black => self.enpassant.shift_up()
                 };
 
+                let cap_pi = self.board.get_piece_info(cap_pos.piece_position()).unwrap();
+
+                // Delete the captured piece 
                 self.mask(cap_pos.negative());
+
+                // Switch pawn to new position
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);
+
+                // Apply switch to team and piece, i.e move
                 *self.board.get_mut_team_bb_rt(mov.piece.team) ^= switch;
                 *self.board.get_mut_piece_bb_rt(mov.piece.kind) ^= switch;
 
                 self.handle_move_side_effects(mov.piece, mov.from, mov.to);
-                self.halfmove_num = 0;
+                self.handle_cap_side_effects(mov.piece, mov.from, mov.to, cap_pi);
             },
             GameMove::CastleKingside(team) => {
                 use crate::precalc::masks::castling;
@@ -437,8 +519,8 @@ impl Game {
         if castle_ks && world.where_also(ks_clears).empty() {
             // Make sure we are not under attack
             let attacked = ks_safes
-                .bit_masks()
-                .all(|mask| self.board.is_pos_attacked::<T::Enemy>(mask.piece_position()));
+                .positions()
+                .all(|pos| self.board.is_pos_attacked::<T::Enemy>(pos));
 
             if !attacked {
                 move_buf.push(GameMove::CastleKingside(T::TEAM));
@@ -447,8 +529,8 @@ impl Game {
         if castle_qs && world.where_also(qs_clears).empty() {
             // Make sure we are not under attack
             let attacked = qs_safes
-                .bit_masks()
-                .all(|mask| self.board.is_pos_attacked::<T::Enemy>(mask.piece_position()));
+                .positions()
+                .all(|pos| self.board.is_pos_attacked::<T::Enemy>(pos));
 
             if !attacked {
                 move_buf.push(GameMove::CastleQueenside(T::TEAM));
@@ -478,7 +560,7 @@ impl Game {
         move_buf
     }
 
-    pub fn get_rook_moves<'m, T : TTeam>(&self, piece: Position, move_buf : &'m mut Vec<GameMove>) -> &'m Vec<GameMove> {
+    fn get_rook_moves<'m, T : TTeam>(&self, piece: Position, move_buf : &'m mut Vec<GameMove>) -> &'m Vec<GameMove> {
         let info = PieceInfo {
             team : T::TEAM,
             kind: PieceKind::Rook,
@@ -558,71 +640,38 @@ impl Game {
         };
         let pawn_attacks = unsafe { all_pawn_attacks.get_unchecked(piece.integral() as usize) };
 
-        // let mut r = Vec::<GameMove>::new();
 
-        if !pawn_attacks.where_also(self.enpassant).empty() {
+        if !(*pawn_attacks & self.enpassant).empty() {
             let ep_idx = self.enpassant.piece_position();
             move_buf.push(GameMove::Enpassant(RawMove::new(piece, ep_idx, info)));
         }
 
-        legals.bit_masks().for_each(|mask| {
-            let is_capture = !(mask & enemies).empty();
-            let is_promote = !(mask & promotion_row).empty();
-            let index = mask.piece_position();
-            let mov = RawMove::new(
-                piece,
-                index,
-                PieceInfo {
-                    team : T::TEAM,
-                    kind: PieceKind::Pawn,
-                },
-            );
+        let captures = legals & enemies;
+        let noncaptures = legals & enemies.negative();
+        let cap_promotes = captures & promotion_row;
+        let reg_promotes = noncaptures & promotion_row;
 
-            match (is_capture, is_promote) {
-                (true, true) => {
-                    move_buf.push(GameMove::CapturePromote {
-                        mov,
-                        promotion: Promotion::Rook,
-                    });
-                    move_buf.push(GameMove::CapturePromote {
-                        mov,
-                        promotion: Promotion::Bishop,
-                    });
-                    move_buf.push(GameMove::CapturePromote {
-                        mov,
-                        promotion: Promotion::Queen,
-                    });
-                    move_buf.push(GameMove::CapturePromote {
-                        mov,
-                        promotion: Promotion::Knight,
-                    });
-                }
-                (false, true) => {
-                    move_buf.push(GameMove::Promote {
-                        mov,
-                        promotion: Promotion::Rook,
-                    });
-                    move_buf.push(GameMove::Promote {
-                        mov,
-                        promotion: Promotion::Bishop,
-                    });
-                    move_buf.push(GameMove::Promote {
-                        mov,
-                        promotion: Promotion::Queen,
-                    });
-                    move_buf.push(GameMove::Promote {
-                        mov,
-                        promotion: Promotion::Knight,
-                    });
-                }
-                (true, false) => {
-                    move_buf.push(GameMove::Capture(mov));
-                }
-                (false, false) => {
-                    move_buf.push(GameMove::Regular(mov));
-                }
-            }
-        });
+        for cap in captures.positions(){
+            move_buf.push(GameMove::Capture(RawMove{piece: info, from: piece, to:cap})) 
+        }
+        for noncap in noncaptures.positions(){
+            move_buf.push(GameMove::Regular(RawMove{piece: info, from: piece, to:noncap})) 
+        }
+        for cap_prom in cap_promotes.positions(){
+            let mov = RawMove{piece: info, from : piece, to : cap_prom};
+            move_buf.push(GameMove::CapturePromote{mov, promotion:Promotion::Rook});
+            move_buf.push(GameMove::CapturePromote{mov, promotion:Promotion::Bishop});
+            move_buf.push(GameMove::CapturePromote{mov, promotion:Promotion::Queen});
+            move_buf.push(GameMove::CapturePromote{mov, promotion:Promotion::Knight});
+        }
+        for noncap_prom in reg_promotes.positions(){
+            let mov = RawMove{piece: info, from : piece, to : noncap_prom};
+            move_buf.push(GameMove::Promote{mov, promotion:Promotion::Rook});
+            move_buf.push(GameMove::Promote{mov, promotion:Promotion::Bishop});
+            move_buf.push(GameMove::Promote{mov, promotion:Promotion::Queen});
+            move_buf.push(GameMove::Promote{mov, promotion:Promotion::Knight});
+
+        }
 
         move_buf
     }

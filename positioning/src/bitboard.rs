@@ -108,13 +108,11 @@ impl Bitboard {
     pub const B_QUEENSIDE_CLEARS: Self = Self::B8.combine_with(Self::C8).combine_with(Self::D8);
 
     pub const W_KINGSIDE_SAFES: Self = Self::E1.combine_with(Self::F1).combine_with(Self::G1);
-    pub const W_QUEENSIDE_SAFES: Self = Self::B1
-        .combine_with(Self::C1)
+    pub const W_QUEENSIDE_SAFES: Self = Self::C1
         .combine_with(Self::D1)
         .combine_with(Self::E1);
     pub const B_KINGSIDE_SAFES: Self = Self::E8.combine_with(Self::F8).combine_with(Self::G8);
-    pub const B_QUEENSIDE_SAFES: Self = Self::B8
-        .combine_with(Self::C8)
+    pub const B_QUEENSIDE_SAFES: Self = Self::C8
         .combine_with(Self::D8)
         .combine_with(Self::E8);
     pub const fn with_rows(r1: u8, r2: u8, r3: u8, r4: u8, r5: u8, r6: u8, r7: u8, r8: u8) -> Self {

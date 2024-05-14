@@ -95,6 +95,7 @@ pub fn pawn_moves<T : TTeam>(pos: Position, world: Bitboard) -> Bitboard {
                 .shift_up()
                 .where_also(free_spots);
 
+
             if !(piece & Bitboard::WHITE_PAWNS_HOME).empty() {
                 moves = moves.combine_with(moves.shift_up().where_also(free_spots));
             }

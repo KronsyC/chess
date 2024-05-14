@@ -10,5 +10,5 @@ fn main(){
     let result = libchess_perft::perft(board, ply);
 
     let elapsed = begin.elapsed();
-    println!("Perft({ply}) = {result} [{elapsed:?}]");
+    println!("Perft({ply}) = {result:?} [{elapsed:?}]");
 }

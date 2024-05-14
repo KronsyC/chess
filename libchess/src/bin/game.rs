@@ -17,8 +17,7 @@ fn main() {
     let mut movn = 1;
     loop{
         chess.board.verify();
-        // chess.board.debug();
-        println!("{}", chess.board.to_fen());
+        println!("{}", chess.to_fen_str());
         mb.clear();
 
         let moves = chess.get_all_moves(&mut mb).unwrap();
@@ -26,7 +25,6 @@ fn main() {
         
         let chosen_move = moves.choose(&mut rng).unwrap();
       
-        println!("(#{movn}) Chosen move (out of {}): {chosen_move:?}", moves.len());
         chess.make_move(*chosen_move);
         for m in moves{
             // println!("M: {m:?}");
