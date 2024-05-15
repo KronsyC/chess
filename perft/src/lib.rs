@@ -1,3 +1,4 @@
+#[cfg(feature = "parallelism")]
 use rayon::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -46,7 +47,6 @@ impl Default for PerftResults{
         }
     }
 }
-use libchess::zobrist::ZobristHash;
 fn _perft(
     game : libchess::game::Game,
     depth : u32,
@@ -97,8 +97,11 @@ fn _perft(
                 promotions
             };
         }
-
-        moves.iter().map(|mov| {
+        #[cfg(feature = "parallelism")]
+        let it = moves.par_iter();
+        #[cfg(not(feature = "parallelism"))]
+        let it = moves.iter();
+        it.map(|mov| {
             let mut cl = game.clone();
             #[cfg(feature = "zobrist")]
             let hcl = {

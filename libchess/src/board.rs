@@ -244,9 +244,9 @@ impl ChessBoard {
         self.blacks &= neg;
     }
 
-    pub fn is_pos_attacked<ATK_BY : TTeam>(&self, pos : Position) -> bool{
+    pub fn is_pos_attacked<AtkBy : TTeam>(&self, pos : Position) -> bool{
         let world = self.whites | self.blacks;
-        let enemies = self.team_pieces::<ATK_BY>();
+        let enemies = self.team_pieces::<AtkBy>();
 
         // We project the attackers from the attacked spot
         // And then check if any enemy pieces exist within 
@@ -258,7 +258,7 @@ impl ChessBoard {
         let moves_as_king = movement::king_moves(pos);
         let moves_as_queen = movement::queen_moves(pos, world);
         // Project pawn attacks out
-        let moves_from_pawn = movement::pawn_attackers::<ATK_BY::Enemy>(pos);
+        let moves_from_pawn = movement::pawn_attackers::<AtkBy::Enemy>(pos);
       
         // we have rooklikes and bishlikes, as queens act as a rook and bishop 
         // this saves a movement::queen_moves call

@@ -1,4 +1,4 @@
-use crate::magic_bitboard::{bishops::BISHOP_MAGIC_INFO, rooks::ROOK_MAGIC_INFO, queens::QUEEN_MAGIC_INFO};
+use crate::magic_bitboard::{bishops::BISHOP_MAGIC_INFO, rooks::ROOK_MAGIC_INFO};
 use crate::piece::Team;
 use crate::piece::TTeam;
 use crate::precalc::masks::{B_PAWN_ATTACKS, KING_MOVEMENT, KNIGHT_MOVEMENT, W_PAWN_ATTACKS};
@@ -37,12 +37,6 @@ pub fn rook_moves(pos: Position, world: Bitboard) -> Bitboard {
 
 pub fn queen_moves(pos: Position, world: Bitboard) -> Bitboard {
 
-    use std::simd;
-    use std::simd::prelude::*;
-    // TODO: Try to get this working to be faster than the current linear approach,
-    // it may not be faster, but try
-    // use packed_simd::u64x2;
-    //
     let (bish_info, rook_info) = unsafe {
         (
             *BISHOP_MAGIC_INFO.get_unchecked(pos.integral() as usize),

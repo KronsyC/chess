@@ -1,11 +1,3 @@
-use libchess::{
-    board,
-    piece,
-    game::Game
-};
-
-use positioning::Position;
-use rand::prelude::*;
 fn main() {
 
     // let mut chess = Game::default();

@@ -4,7 +4,6 @@ use crate::piece::{
     TPieceKind, TTeam, Team,
 };
 use crate::precalc::masks;
-use crate::zobrist::ZKeySet;
 use crate::zobrist::ZobKeys;
 use crate::zobrist::ZobristHash;
 use positioning::Bitboard;
@@ -293,11 +292,11 @@ impl Game {
     fn handle_cap_side_effects(
         &mut self,
         piece: PieceInfo,
-        from: Position,
+        _from: Position,
         to: Position,
         cap: PieceInfo,
-        #[cfg(feature = "zobrist")] hash: &mut ZobristHash,
-        #[cfg(feature = "zobrist")] zkeys: &ZobKeys,
+        #[cfg(feature = "zobrist")] _hash: &mut ZobristHash,
+        #[cfg(feature = "zobrist")] _zkeys: &ZobKeys,
     ) {
         use PieceKind::*;
         use Team::*;
@@ -326,6 +325,7 @@ impl Game {
         #[cfg(feature = "zobrist")] hash: &mut ZobristHash,
         #[cfg(feature = "zobrist")] zkeys: &ZobKeys,
     ) {
+        #[cfg(feature = "zobrist")]
         let prev_ep = self.enpassant;
         self.enpassant = Bitboard::default();
         match (piece.kind, piece.team) {
@@ -516,16 +516,16 @@ impl Game {
             GameMove::Promote { promotion, mov } => {
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);
 
-                let new_pk = match promotion {
-                    Promotion::Knight => PieceKind::Knight,
-                    Promotion::Bishop => PieceKind::Bishop,
-                    Promotion::Queen => PieceKind::Queen,
-                    Promotion::Rook => PieceKind::Rook,
-                };
 
                 #[cfg(feature = "zobrist")]
                 {
                     // Zobrist Update
+                    let new_pk = match promotion {
+                        Promotion::Knight => PieceKind::Knight,
+                        Promotion::Bishop => PieceKind::Bishop,
+                        Promotion::Queen => PieceKind::Queen,
+                        Promotion::Rook => PieceKind::Rook,
+                    };
                     let p_zk = zkeys.piece_keys_for(mov.piece.kind, mov.piece.team);
                     let prom_zk = zkeys.piece_keys_for(new_pk, mov.piece.team);
 
@@ -557,15 +557,15 @@ impl Game {
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);
                 let cap_pi = self.board.get_piece_info(mov.to).unwrap();
 
-                let new_pk = match promotion {
-                    Promotion::Knight => PieceKind::Knight,
-                    Promotion::Bishop => PieceKind::Bishop,
-                    Promotion::Queen => PieceKind::Queen,
-                    Promotion::Rook => PieceKind::Rook,
-                };
 
                 #[cfg(feature = "zobrist")]
                 {
+                    let new_pk = match promotion {
+                        Promotion::Knight => PieceKind::Knight,
+                        Promotion::Bishop => PieceKind::Bishop,
+                        Promotion::Queen => PieceKind::Queen,
+                        Promotion::Rook => PieceKind::Rook,
+                    };
                     let cap_pi = self.board.get_piece_info(mov.to).unwrap();
 
                     // Zobrist update
@@ -782,16 +782,6 @@ impl Game {
         }
     }
 
-    fn switch(&mut self, sw: Bitboard) {
-        self.board.kings ^= sw;
-        self.board.queens ^= sw;
-        self.board.rooks ^= sw;
-        self.board.bishops ^= sw;
-        self.board.knights ^= sw;
-        self.board.pawns ^= sw;
-        self.board.whites ^= sw;
-        self.board.blacks ^= sw;
-    }
 
     fn mask(&mut self, mask: Bitboard) {
         self.board.kings &= mask;

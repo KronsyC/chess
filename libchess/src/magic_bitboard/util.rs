@@ -1,5 +1,3 @@
-use super::bishops::BISHOP_MAGIC_INFO;
-use super::rooks::ROOK_MAGIC_INFO;
 use positioning::Bitboard;
 
 #[derive(Clone, Copy)]
