@@ -1,10 +1,7 @@
-#[cfg(feature = "zobrist")]
-use rand::prelude::*;
-
 fn main(){
     let args : Vec<_> = std::env::args().collect();
 
-    let ply = u32::from_str_radix(args.get(1).expect("Expected 'ply' argument"), 10).expect("Expected valid ply");
+    let ply = args.get(1).expect("Expected 'ply' argument").parse::<u32>().expect("Expected valid ply");
 
     let board = libchess::game::Game::default();
 

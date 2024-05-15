@@ -2,16 +2,21 @@
 name = "libchess"
 version = "0.1.0"
 
+description="LibChess Core Library, providing the base chess engine"
+
 authors = {workspace = true}
 homepage = {workspace = true}
 repository = {workspace = true}
 license = {workspace = true}
 edition = {workspace = true}
+categories = {workspace = true}
+keywords = {workspace = true}
+readme = {workspace = true}
 
 [[bin]]
 name = "game"
 path = "src/bin/game.rs"
-features = [
+required-features = [
   "zobrist"
 ]
 
@@ -29,7 +34,6 @@ rand = "0.8.5"
 rayon = {version="1.7.0"}
 positioning = {path = "../positioning/"}
 thiserror = "1.0.60"
-smallvec = { version = "1.13.2", features = ["arbitrary"] }
 
 [build-dependencies]
 positioning = {path = "../positioning/"}

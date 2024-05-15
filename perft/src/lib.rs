@@ -1,3 +1,11 @@
+ #![warn(
+    clippy::all,
+    clippy::nursery,
+    clippy::cargo,
+    clippy::style,
+    clippy::perf
+ )]
+
 #[cfg(feature = "parallelism")]
 use rayon::prelude::*;
 
@@ -7,7 +15,7 @@ pub struct PerftKey{
     hash : libchess::zobrist::ZobristHash
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct PerftResults{
     pub captures : u64,
     pub castles : u64,
@@ -18,7 +26,7 @@ pub struct PerftResults{
 
 
 impl std::ops::Add for PerftResults{
-    type Output = PerftResults;
+    type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         Self{
             captures: self.captures + rhs.captures,
@@ -36,19 +44,8 @@ impl std::iter::Sum for PerftResults{
     }
 }
 
-impl Default for PerftResults{
-    fn default() -> Self {
-        Self{
-            castles: 0,
-            captures: 0,
-            nodes: 0,
-            enpassant: 0,
-            promotions: 0,
-        }
-    }
-}
 fn _perft(
-    game : libchess::game::Game,
+    game : &libchess::game::Game,
     depth : u32,
     #[cfg(feature="zobrist")] map : &dashmap::DashMap<PerftKey, PerftResults>,
     #[cfg(feature="zobrist")] hash : libchess::zobrist::ZobristHash,
@@ -112,8 +109,9 @@ fn _perft(
 
             #[cfg(not(feature = "zobrist"))]
             cl.make_move(*mov);
+            #[allow(clippy::let_and_return)]
             let v = _perft(
-                cl,
+                &cl,
                 depth - 1,
                 #[cfg(feature = "zobrist")] map,
                 #[cfg(feature = "zobrist")] hcl.clone(),
@@ -139,7 +137,7 @@ pub fn perft(
     #[cfg(feature = "zobrist")] zkeys : &libchess::zobrist::ZobKeys
     ) -> PerftResults{
     _perft(
-        game,
+        &game,
         limit,
         #[cfg(feature = "zobrist")] &dashmap::DashMap::new(),
         #[cfg(feature = "zobrist")] game.get_zobrist_hash(zkeys).unwrap(),

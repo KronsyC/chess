@@ -41,10 +41,10 @@ type HashT = u64;
 
 pub struct ZKeySet([ZKey; 64]);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct ZKey(HashT);
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ZobristHash(HashT);
 
 impl ZobristHash{
@@ -56,22 +56,17 @@ impl ZobristHash{
 
 
 
-impl Default for ZobristHash{
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 impl ZKey{
-    pub fn generate(rng : &mut impl rand::Rng) -> ZKey{
-        ZKey(rng.gen::<HashT>())
+    pub fn generate(rng : &mut impl rand::Rng) -> Self{
+        Self(rng.gen::<HashT>())
         // ZKey(rng.gen::<HashT>() & rng.gen::<HashT>() & rng.gen::<HashT>())
     }
 }
 
 impl ZKeySet{
-    pub fn generate(rng : &mut impl rand::Rng) -> ZKeySet{
-        ZKeySet(std::array::from_fn(|_| ZKey::generate(rng)))
+    pub fn generate(rng : &mut impl rand::Rng) -> Self{
+        Self(std::array::from_fn(|_| ZKey::generate(rng)))
     }
 
     pub fn at_pos(&self, pos : Position) -> ZKey{
@@ -81,8 +76,8 @@ impl ZKeySet{
 
 
 impl ZobKeys{
-    pub fn generate(rng : &mut impl rand::Rng) -> ZobKeys{
-        ZobKeys{
+    pub fn generate(rng : &mut impl rand::Rng) -> Self{
+        Self{
             black_knight: ZKeySet::generate(rng),
             black_rook: ZKeySet::generate(rng),
             black_queen: ZKeySet::generate(rng),
@@ -113,7 +108,7 @@ impl ZobKeys{
 
 
 
-    pub fn piece_keys_for(&self, piece : PieceKind, team : Team) -> &ZKeySet{
+    pub const fn piece_keys_for(&self, piece : PieceKind, team : Team) -> &ZKeySet{
         use Team::*;
         use PieceKind::*;
         match (team, piece){
@@ -132,7 +127,7 @@ impl ZobKeys{
         }
     }
 
-    pub fn enpassant_keys_for(&self, pos : Position) -> ZKey{
+    pub const fn enpassant_keys_for(&self, pos : Position) -> ZKey{
         match pos.col(){
             0 => self.enpassant_a,
             1 => self.enpassant_b,
@@ -142,7 +137,7 @@ impl ZobKeys{
             5 => self.enpassant_f,
             6 => self.enpassant_g,
             7 => self.enpassant_h,
-            _ => unreachable!()
+            _ => ZKey(0)
         }
     }
 }

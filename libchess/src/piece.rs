@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PieceKind{
     King,
     Queen,
@@ -7,7 +7,7 @@ pub enum PieceKind{
     Knight,
     Pawn
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Team{
     White,
     Black
@@ -15,10 +15,10 @@ pub enum Team{
 
 
 impl Team{
-    pub fn enemy(self) -> Team{
+    pub const fn enemy(self) -> Self{
         match self{
-            Team::Black => Team::White,
-            Team::White => Team::Black
+            Self::Black => Self::White,
+            Self::White => Self::Black
         }
     }
 }
@@ -70,7 +70,7 @@ impl TTeam for GBlack{
     type Enemy = GWhite;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PieceInfo{
     pub kind : PieceKind,
     pub team : Team
@@ -90,7 +90,7 @@ pub const BLACK_BISHOP : PieceInfo = PieceInfo{kind: PieceKind::Bishop, team: Te
 pub const BLACK_ROOK : PieceInfo = PieceInfo{kind: PieceKind::Rook, team: Team::Black};
 pub const BLACK_KNIGHT : PieceInfo = PieceInfo{kind: PieceKind::Knight, team: Team::Black};
 pub const BLACK_PAWN : PieceInfo = PieceInfo{kind: PieceKind::Pawn, team: Team::Black};
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[allow(unused)]
 pub enum EnPassant{
     A1,
@@ -162,16 +162,15 @@ pub enum EnPassant{
 
 
 impl EnPassant{
-    pub fn from_index(idx : u8) -> EnPassant{
-        assert!(idx < 64, "Index out of bounds");
+    pub fn from_index(idx : u8) -> Self{
+        debug_assert!(idx < 64, "Index out of bounds");
         unsafe{
             std::mem::transmute(idx)
         }
     }
 
     pub fn to_index(&self) -> u8{
-        
-        assert!(*self == Self::None, "Cannot translate no enpassant to an index");
+        debug_assert!(*self == Self::None, "Cannot translate no enpassant to an index");
         unsafe{
             std::mem::transmute(*self)
         }

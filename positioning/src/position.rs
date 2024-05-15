@@ -1,13 +1,13 @@
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Position(u8);
 
 
 
 impl Position{
-    pub const fn new(row : u8, col : u8) -> Position{
-        assert!(row < 8, "Row in bounds");
-        assert!(col < 8, "Col in bounds");
-        Position(
+    pub const fn new(row : u8, col : u8) -> Self{
+        debug_assert!(row < 8, "Row in bounds");
+        debug_assert!(col < 8, "Col in bounds");
+        Self(
             col | row << 3
         )
     }
@@ -31,10 +31,10 @@ impl Position{
     }
 
 
-    pub const fn from_integral(integ : u8) -> Position{
-        assert!(integ < 64, "Integral less than 64");
+    pub const fn from_integral(integ : u8) -> Self{
+        debug_assert!(integ < 64, "Integral less than 64");
 
-        Position(integ)
+        Self(integ)
     }
 
     pub fn as_alphanum(&self) -> String{

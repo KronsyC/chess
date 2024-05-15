@@ -16,7 +16,7 @@ pub enum Promotion {
     Knight,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct RawMove {
     pub to: Position,
     pub from: Position,
@@ -24,8 +24,8 @@ pub struct RawMove {
 }
 
 impl RawMove {
-    fn new(from: Position, to: Position, piece: PieceInfo) -> Self {
-        RawMove { from, to, piece }
+    const fn new(from: Position, to: Position, piece: PieceInfo) -> Self {
+        Self { from, to, piece }
     }
 }
 
@@ -118,19 +118,19 @@ impl CastleInfo {
         self.0 &= 0b1100;
     }
 
-    pub fn white_kingside(&self) -> bool {
+    pub const fn white_kingside(&self) -> bool {
         self.0 & 0b1000 != 0
     }
 
-    pub fn white_queenside(&self) -> bool {
+    pub const fn white_queenside(&self) -> bool {
         self.0 & 0b0100 != 0
     }
 
-    pub fn black_kingside(&self) -> bool {
+    pub const fn black_kingside(&self) -> bool {
         self.0 & 0b0010 != 0
     }
 
-    pub fn black_queenside(&self) -> bool {
+    pub const fn black_queenside(&self) -> bool {
         self.0 & 0b0001 != 0
     }
 }
@@ -141,7 +141,7 @@ impl Default for CastleInfo {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Default)]
 pub struct Game {
     pub board: ChessBoard,
     pub halfmove_num: u64,
@@ -149,19 +149,6 @@ pub struct Game {
     pub enpassant: Bitboard,
     pub castling: CastleInfo,
     pub state: GameState,
-}
-
-impl Default for Game {
-    fn default() -> Self {
-        Self {
-            board: ChessBoard::default(),
-            halfmove_num: 0,
-            fullmove_num: 0,
-            enpassant: Bitboard::default(),
-            castling: CastleInfo::default(),
-            state: GameState::default(),
-        }
-    }
 }
 
 impl Game {
@@ -199,7 +186,7 @@ impl Game {
             if self.castling.black_queenside() {
                 s += "q";
             }
-            if s.len() == 0 {
+            if s.is_empty() {
                 s += "-";
             }
             s
@@ -216,7 +203,7 @@ impl Game {
             self.halfmove_num, self.fullmove_num
         )
     }
-    pub fn get_active_team(&self) -> Option<Team> {
+    pub const fn get_active_team(&self) -> Option<Team> {
         match self.state {
             GameState::WhiteToMove => Some(Team::White),
             GameState::BlackToMove => Some(Team::Black),
@@ -300,7 +287,7 @@ impl Game {
     ) {
         use PieceKind::*;
         use Team::*;
-        assert_eq!(piece.team.enemy(), cap.team, "Capturing Enemy");
+        debug_assert_eq!(piece.team.enemy(), cap.team, "Capturing Enemy");
         match (cap.team, cap.kind) {
             (White, Rook) => match to.integral() {
                 0 => self.castling.unset_white_queenside(),
@@ -470,8 +457,8 @@ impl Game {
                 );
             }
             GameMove::Capture(mov) => {
-                assert!(
-                    matches!(self.board.get_piece_info(mov.to), Some(_)),
+                debug_assert!(
+                    self.board.get_piece_info(mov.to).is_some(),
                     "Capture move goes to occupied square"
                 );
                 let switch = Bitboard::from(mov.from) | Bitboard::from(mov.to);

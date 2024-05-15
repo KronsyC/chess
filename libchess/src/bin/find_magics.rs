@@ -1,16 +1,16 @@
-use positioning::Bitboard;
 use libchess::precalc::masks;
+use positioning::Bitboard;
 use rand::Rng;
 use rayon::prelude::*;
 
 ///
-/// The degree to which the keyspace 
-/// is increased from most optimal size 
+/// The degree to which the keyspace
+/// is increased from most optimal size
 ///
-/// This makes finding magics take less time 
+/// This makes finding magics take less time
 /// but also increases memory needs
 ///
-const KEYSPACE_INCREASE : u8 = 0;
+const KEYSPACE_INCREASE: u8 = 0;
 
 fn rook_attack_bb(idx: u8, world: Bitboard) -> Bitboard {
     let piece = 1u64 << idx;
@@ -53,9 +53,8 @@ fn rook_attack_bb(idx: u8, world: Bitboard) -> Bitboard {
         left_col -= 1;
     }
 
-    let ret = Bitboard::from_bits(up | down | left | right).where_not(Bitboard::from_bits(piece));
+    Bitboard::from_bits(up | down | left | right).where_not(Bitboard::from_bits(piece))
 
-    return ret;
 }
 
 fn bishop_attack_bb(idx: u8, world: Bitboard) -> Bitboard {
@@ -102,10 +101,9 @@ fn bishop_attack_bb(idx: u8, world: Bitboard) -> Bitboard {
         downright_cnt -= 1;
     }
 
-    let ret = Bitboard::from_bits(upleft | upright | downleft | downright)
-        .where_not(Bitboard::from_bits(piece));
+    Bitboard::from_bits(upleft | upright | downleft | downright)
+        .where_not(Bitboard::from_bits(piece))
 
-    return ret;
 }
 fn calculate_rook_attacks(idx: u8, magic: MagicResult) -> Vec<Bitboard> {
     let mut boards = Vec::<Bitboard>::new();
@@ -152,7 +150,6 @@ fn calculate_queen_attacks(idx: u8, magic: MagicResult) -> Vec<Bitboard> {
     boards
 }
 
-
 fn test_magic(magic: u64, mask: Bitboard, hs: &mut std::collections::HashSet<u32>) -> bool {
     hs.clear();
     let count = mask.count();
@@ -188,7 +185,7 @@ fn calc_magic_for_mask(mask: Bitboard) -> MagicResult {
         if is_valid_magic {
             return MagicResult {
                 magic: rand,
-                shift: (64u8 - mask.count() - KEYSPACE_INCREASE) as u8,
+                shift: 64u8 - mask.count() - KEYSPACE_INCREASE,
                 mask: mask.data,
             };
         }
@@ -203,30 +200,48 @@ fn write_data(magics: Vec<MagicResult>, attacks: Vec<Vec<Bitboard>>, name: &str)
             std::fs::File::create(format!("data/attacks/{}/{}", name, idx)).unwrap();
 
         for a in atks {
-            attacks_file.write(&a.data.to_be_bytes()).unwrap();
+            attacks_file.write_all(&a.data.to_be_bytes()).unwrap();
         }
     });
 
     let mut magics_file = std::fs::File::create(format!("data/magics/{}", name)).unwrap();
     magics.iter().for_each(|m| {
-        magics_file.write(&m.magic.to_be_bytes()).unwrap();
+        magics_file.write_all(&m.magic.to_be_bytes()).unwrap();
     });
 }
 
 fn main() {
-
     let start = std::time::SystemTime::now();
-    println!("Starting at unix time: {}", start.duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_secs());
-    let results : Vec<_> = [masks::ROOK_MOVEMENT, masks::BISHOP_MOVEMENT, masks::QUEEN_MOVEMENT]
-        .par_iter().map(|mask_set| mask_set.par_iter().map(|mask| {
-                        let r = calc_magic_for_mask(*mask);
-                        println!("Found magic after {:?} seconds", start.elapsed().unwrap().as_secs());
-                        return r;
-        }).collect::<Vec<_>>() ).collect();
+    println!(
+        "Starting at unix time: {}",
+        start
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    );
+    let results: Vec<_> = [
+        masks::ROOK_MOVEMENT,
+        masks::BISHOP_MOVEMENT,
+        masks::QUEEN_MOVEMENT,
+    ]
+    .par_iter()
+    .map(|mask_set| {
+        mask_set
+            .par_iter()
+            .map(|mask| {
+                let r = calc_magic_for_mask(*mask);
+                println!(
+                    "Found magic after {:?} seconds",
+                    start.elapsed().unwrap().as_secs()
+                );
+                r
+            })
+            .collect::<Vec<_>>()
+    })
+    .collect();
     let rook_magics = results[0].to_vec();
     let bishop_magics = results[1].to_vec();
     let queen_magics = results[2].to_vec();
-
 
     let rook_attacks: Vec<_> = rook_magics
         .par_iter()

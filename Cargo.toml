@@ -15,7 +15,9 @@ homepage = "https://github.com/KronsyC/chess"
 repository = "https://github.com/KronsyC/chess"
 license = "MIT"
 edition = "2021"
-
+categories = ["games"]
+keywords = ["chess"]
+readme = "./README.md"
 
 [profile.release]
 opt-level = 3
@@ -26,6 +28,6 @@ panic = "abort"
 # strip = "debuginfo"
 
 [profile.dev]
-opt-level = 1
+opt-level = 2
 
 

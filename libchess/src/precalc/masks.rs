@@ -2,10 +2,9 @@
 //! Precalculate movement masks for use in quick move lookups
 //!
 
-use crate::coord::Coord;
 use crate::piece::Team;
 use positioning::Bitboard;
-
+use positioning::Position;
 pub type PrecalcBB = [Bitboard; 64];
 
 pub const KNIGHT_MOVEMENT: PrecalcBB = precalc_knight_moves();
@@ -44,11 +43,11 @@ const fn offset(index: usize, cols: isize, rows: isize) -> Bitboard {
     let new_row = row + rows;
 
     if new_col < 0 || new_col > 7 || new_row < 0 || new_row > 7 {
-        return Bitboard { data: 0 };
+        Bitboard { data: 0 }
     } else {
-        return Bitboard {
+        Bitboard {
             data: 1 << (new_row * 8 + new_col) as u64,
-        };
+        }
     }
 }
 
@@ -79,7 +78,7 @@ const fn precalc_knight_moves() -> [Bitboard; 64] {
         i += 1;
     }
 
-    return moves;
+    moves
 }
 
 ///
@@ -108,7 +107,7 @@ const fn precalc_king_moves() -> [Bitboard; 64] {
         i += 1;
     }
 
-    return moves;
+    moves
 }
 
 const fn precalc_pawn_attack_mask(team: Team) -> [Bitboard; 64] {
@@ -136,11 +135,13 @@ const fn precalc_pawn_attack_mask(team: Team) -> [Bitboard; 64] {
         i += 1;
     }
 
-    return moves;
+    moves
 }
 
 const fn precalc_rook_mask(idx: u8) -> Bitboard {
-    let Coord { row, col } = Coord::from_idx(idx);
+    let pos = Position::from_integral(idx);
+    let row = pos.row();
+    let col = pos.col();
 
     let board = Bitboard::from_piece_index(idx);
     let up_count = if row == 7 { 0 } else { 6 - row };
@@ -186,7 +187,9 @@ const fn min(a: u8, b: u8) -> u8 {
 }
 
 const fn precalc_bishop_mask(idx: u8) -> Bitboard {
-    let Coord { row, col } = Coord::from_idx(idx);
+    let pos = Position::from_integral(idx);
+    let row = pos.row();
+    let col = pos.col();
 
     let board = Bitboard::from_piece_index(idx);
 

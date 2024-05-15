@@ -1,3 +1,11 @@
+ #![warn(
+    clippy::all,
+    clippy::nursery,
+    clippy::cargo,
+    clippy::style,
+    clippy::perf
+ )]
+
 pub mod bitboard;
 pub mod position;
 

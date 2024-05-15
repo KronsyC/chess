@@ -57,7 +57,7 @@ pub fn queen_moves(pos: Position, world: Bitboard) -> Bitboard {
     let atkb = unsafe{bish_info.moves.get_unchecked(shb as usize)};
     let atkr = unsafe{rook_info.moves.get_unchecked(shr as usize)};
 
-    return atkb.combine_with(*atkr);
+    atkb.combine_with(*atkr)
 
 
     // let info = unsafe{QUEEN_MAGIC_INFO.get_unchecked(pos as usize)};
@@ -95,7 +95,7 @@ pub fn pawn_moves<T : TTeam>(pos: Position, world: Bitboard) -> Bitboard {
             }
             moves =
                 moves.combine_with((*W_PAWN_ATTACKS.get_unchecked(pos.integral() as usize)).where_also(world));
-            return moves;
+            moves
         },
         Team::Black => unsafe {
             let mut moves = piece
@@ -106,7 +106,7 @@ pub fn pawn_moves<T : TTeam>(pos: Position, world: Bitboard) -> Bitboard {
             }
             moves =
                 moves.combine_with((*B_PAWN_ATTACKS.get_unchecked(pos.integral() as usize)).where_also(world));
-            return moves;
+            moves
         },
     }
 }

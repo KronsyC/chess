@@ -7,7 +7,7 @@ use std::ops;
 /// Row 1 is the bottom
 /// Col 1 is the left
 ///
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Bitboard {
     pub data: u64,
 }
@@ -108,13 +108,11 @@ impl Bitboard {
     pub const B_QUEENSIDE_CLEARS: Self = Self::B8.combine_with(Self::C8).combine_with(Self::D8);
 
     pub const W_KINGSIDE_SAFES: Self = Self::E1.combine_with(Self::F1).combine_with(Self::G1);
-    pub const W_QUEENSIDE_SAFES: Self = Self::C1
-        .combine_with(Self::D1)
-        .combine_with(Self::E1);
+    pub const W_QUEENSIDE_SAFES: Self = Self::C1.combine_with(Self::D1).combine_with(Self::E1);
     pub const B_KINGSIDE_SAFES: Self = Self::E8.combine_with(Self::F8).combine_with(Self::G8);
-    pub const B_QUEENSIDE_SAFES: Self = Self::C8
-        .combine_with(Self::D8)
-        .combine_with(Self::E8);
+    pub const B_QUEENSIDE_SAFES: Self = Self::C8.combine_with(Self::D8).combine_with(Self::E8);
+
+    #[allow(clippy::too_many_arguments)]
     pub const fn with_rows(r1: u8, r2: u8, r3: u8, r4: u8, r5: u8, r6: u8, r7: u8, r8: u8) -> Self {
         let dat = [r8, r7, r6, r5, r4, r3, r2, r1];
         Self {
@@ -122,6 +120,7 @@ impl Bitboard {
         }
     }
     #[rustfmt::skip]
+    #[allow(clippy::too_many_arguments, clippy::identity_op)]
     pub const fn with_cols(c1: u8, c2: u8, c3: u8, c4: u8, c5: u8, c6: u8, c7: u8, c8: u8) -> Self {
         let b1 : u8 = 0b00000001;
         let b2 : u8 = 0b00000010;
@@ -146,7 +145,7 @@ impl Bitboard {
     /// Returns a bitboard representing the squares shared
     /// by this board and the other board
     ///
-    pub const fn where_also(self, other: Bitboard) -> Bitboard {
+    pub const fn where_also(self, other: Self) -> Self {
         Self {
             data: self.data & other.data,
         }
@@ -156,7 +155,7 @@ impl Bitboard {
     /// Returns a bitboard representing the squares
     /// exclusive to this board
     ///
-    pub const fn where_not(self, other: Bitboard) -> Bitboard {
+    pub const fn where_not(self, other: Self) -> Self {
         Self {
             data: self.data & !other.data,
         }
@@ -166,7 +165,7 @@ impl Bitboard {
     /// Returns a bitboard representing the squares
     /// of this board and the other board
     ///
-    pub const fn combine_with(self, other: Bitboard) -> Bitboard {
+    pub const fn combine_with(self, other: Self) -> Self {
         Self {
             data: self.data | other.data,
         }
@@ -177,55 +176,55 @@ impl Bitboard {
     /// of this board and the other board
     /// without the shared squares
     ///
-    pub const fn combine_with_exclusively(self, other: Bitboard) -> Bitboard {
+    pub const fn combine_with_exclusively(self, other: Self) -> Self {
         Self {
             data: self.data ^ other.data,
         }
     }
 
-    pub const fn piece_position(self) -> Position{
-        assert!(
+    pub const fn piece_position(self) -> Position {
+        debug_assert!(
             self.data.count_ones() == 1,
             "Expected a singular piece to take the index of"
         );
-        
+
         Position::from_integral(self.data.trailing_zeros() as u8)
     }
 
     ///
     /// Create a bitboard from a piece index
     ///
-    pub const fn from_piece_index(idx: u8) -> Bitboard {
-        assert!(idx < 64, "Expected an in-bounds index");
-        Bitboard { data: 1u64 << idx }
+    pub const fn from_piece_index(idx: u8) -> Self {
+        debug_assert!(idx < 64, "Expected an in-bounds index");
+        Self { data: 1u64 << idx }
     }
 
     #[inline(always)]
-    pub const fn shift_up(self) -> Bitboard {
-        Bitboard {
+    pub const fn shift_up(self) -> Self {
+        Self {
             data: self.data << 8,
         }
     }
     #[inline(always)]
-    pub const fn shift_down(self) -> Bitboard {
-        Bitboard {
+    pub const fn shift_down(self) -> Self {
+        Self {
             data: self.data >> 8,
         }
     }
 
     #[inline(always)]
-    pub const fn negative(self) -> Bitboard {
-        Bitboard { data: !self.data }
+    pub const fn negative(self) -> Self {
+        Self { data: !self.data }
     }
 
     #[inline(always)]
     pub const fn empty(self) -> bool {
-        return self.data == 0;
+        self.data == 0
     }
 
     #[inline(always)]
     pub const fn count(self) -> u8 {
-        return self.data.count_ones() as u8;
+        self.data.count_ones() as u8
     }
 
     ///
@@ -233,7 +232,7 @@ impl Bitboard {
     /// the initial bit is not preserved
     ///
     #[inline(always)]
-    pub const fn ray_up(self, n: u8) -> Bitboard {
+    pub const fn ray_up(self, n: u8) -> Self {
         let mut d: u64 = 0;
         let mut i = 0u8;
         loop {
@@ -243,17 +242,17 @@ impl Bitboard {
             let before = d;
             d |= self.data << ((i + 1) * 8);
 
-            assert!(d != before, "Out of bounds shift");
+            debug_assert!(d != before, "Out of bounds shift");
             i += 1;
         }
-        Bitboard { data: d }
+        Self { data: d }
     }
     ///
     /// Effectively a series of n shifts down which are or'd together
     /// the initial bit is not preserved
     ///
     #[inline(always)]
-    pub const fn ray_down(self, n: u8) -> Bitboard {
+    pub const fn ray_down(self, n: u8) -> Self {
         let mut d: u64 = 0;
         let mut i = 0u8;
         loop {
@@ -262,17 +261,17 @@ impl Bitboard {
             }
             let before = d;
             d |= self.data >> ((i + 1) * 8);
-            assert!(d != before, "Out of bounds shift");
+            debug_assert!(d != before, "Out of bounds shift");
             i += 1;
         }
-        Bitboard { data: d }
+        Self { data: d }
     }
     ///
     /// Effectively a series of n shifts left which are or'd together
     /// the initial bit is not preserved
     ///
     #[inline(always)]
-    pub const fn ray_right(self, n: u8) -> Bitboard {
+    pub const fn ray_right(self, n: u8) -> Self {
         let mut d: u64 = 0;
         let mut i = 0u8;
         loop {
@@ -282,17 +281,17 @@ impl Bitboard {
             let before = d;
             d |= self.data << (i + 1);
 
-            assert!(d != before, "Out of bounds shift");
+            debug_assert!(d != before, "Out of bounds shift");
             i += 1;
         }
-        Bitboard { data: d }
+        Self { data: d }
     }
     ///
     /// Effectively a series of n shifts right which are or'd together
     /// the initial bit is not preserved
     ///
     #[inline(always)]
-    pub const fn ray_left(self, n: u8) -> Bitboard {
+    pub const fn ray_left(self, n: u8) -> Self {
         let mut d: u64 = 0;
         let mut i = 0u8;
         loop {
@@ -302,10 +301,10 @@ impl Bitboard {
             let before = d;
             d |= self.data >> (i + 1);
 
-            assert!(d != before, "Out of bounds shift");
+            debug_assert!(d != before, "Out of bounds shift");
             i += 1;
         }
-        Bitboard { data: d }
+        Self { data: d }
     }
 
     pub fn bit_indexes(self) -> Vec<u8> {
@@ -327,31 +326,29 @@ impl Bitboard {
     /// Returns an iterator of masks,
     /// where each mask contains a single set bit from the board
     ///
-    pub fn bit_masks(self) -> Bitmasks {
+    pub const fn bit_masks(self) -> Bitmasks {
         Bitmasks::new(self)
     }
     pub fn mask_permutations(self) -> MaskPermutations {
         MaskPermutations::new(self)
     }
 
-    pub const fn from_bits(bits: u64) -> Bitboard {
-        Bitboard { data: bits }
+    pub const fn from_bits(bits: u64) -> Self {
+        Self { data: bits }
     }
 
-    pub fn positions(self) -> Positions {
+    pub const fn positions(self) -> Positions {
         Positions::new(self)
     }
 }
 
 use crate::Position;
 
-
-impl From<Position> for Bitboard{
-   fn from(pos : Position) -> Bitboard{
-       Bitboard::from_bits( 1 << pos.integral() ) 
-   } 
+impl From<Position> for Bitboard {
+    fn from(pos: Position) -> Self {
+        Self::from_bits(1 << pos.integral())
+    }
 }
-
 
 ///
 /// Iterator over all occupied positions in a bitboard
@@ -361,7 +358,7 @@ pub struct Positions {
 }
 
 impl Positions {
-    pub fn new(mask: Bitboard) -> Self {
+    pub const fn new(mask: Bitboard) -> Self {
         Self { mask }
     }
 }
@@ -385,7 +382,7 @@ pub struct Bitmasks {
 }
 
 impl Bitmasks {
-    pub fn new(mask: Bitboard) -> Self {
+    pub const fn new(mask: Bitboard) -> Self {
         Self { mask }
     }
 }
@@ -411,15 +408,15 @@ pub struct MaskPermutations {
 }
 
 impl MaskPermutations {
-    fn new(mask: Bitboard) -> MaskPermutations {
+    fn new(mask: Bitboard) -> Self {
         let count = mask.count();
         let mut bytes = Vec::<bool>::with_capacity(count as usize);
         bytes.resize(count as usize, false);
 
-        MaskPermutations {
-            mask: mask,
+        Self {
+            mask,
             idx: 0,
-            bytes: bytes,
+            bytes,
             bit_indexes: mask.bit_indexes(),
         }
     }
@@ -441,12 +438,10 @@ impl Iterator for MaskPermutations {
         }
 
         let mut ret: u64 = 0;
-        let mut bytes_idx: u8 = 0;
-        for idx in &self.bit_indexes {
+        for (bytes_idx, idx) in (0u8..).zip(self.bit_indexes.iter()) {
             if self.bytes[bytes_idx as usize] {
                 ret |= 1 << idx;
             }
-            bytes_idx += 1;
         }
 
         self.idx += 1;
@@ -472,11 +467,11 @@ impl ops::BitAnd for Bitboard {
     }
 }
 
-impl ops::BitXor for Bitboard{
-    type Output = Bitboard;
+impl ops::BitXor for Bitboard {
+    type Output = Self;
     fn bitxor(self, rhs: Self) -> Self::Output {
-        Self{
-            data : self.data ^ rhs.data
+        Self {
+            data: self.data ^ rhs.data,
         }
     }
 }
