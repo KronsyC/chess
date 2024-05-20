@@ -16,6 +16,37 @@ impl Bitboard {
     pub const fn const_default() -> Self {
         Self { data: 0 }
     }
+
+    pub const fn from_row(row: u8) -> Self {
+        debug_assert!(row < 8, "Row within bounds");
+        match row {
+            0 => Self::ROW_1,
+            1 => Self::ROW_2,
+            2 => Self::ROW_3,
+            3 => Self::ROW_4,
+            4 => Self::ROW_5,
+            5 => Self::ROW_6,
+            6 => Self::ROW_7,
+            7 => Self::ROW_8,
+            _ => unreachable!(),
+        }
+    }
+
+    pub const fn from_col(col: u8) -> Self {
+        debug_assert!(col < 8, "Col within bounds");
+        match col {
+            0 => Self::COL_A,
+            1 => Self::COL_B,
+            2 => Self::COL_C,
+            3 => Self::COL_D,
+            4 => Self::COL_E,
+            5 => Self::COL_F,
+            6 => Self::COL_G,
+            7 => Self::COL_H,
+            _ => unreachable!(),
+        }
+    }
+
     pub const ROW_1: Self = Self::with_rows(0xFF, 0, 0, 0, 0, 0, 0, 0);
     pub const ROW_2: Self = Self::with_rows(0, 0xFF, 0, 0, 0, 0, 0, 0);
     pub const ROW_3: Self = Self::with_rows(0, 0, 0xFF, 0, 0, 0, 0, 0);
@@ -131,13 +162,13 @@ impl Bitboard {
         let b7 : u8 = 0b01000000;
         let b8 : u8 = 0b10000000;
         let r1 = c1 >> 0 & b1 | c2 << 1 & b2 | c3 << 2 & b3 | c4 << 3 & b4 | c5 << 4 & b5 | c6 << 5 & b6 | c7 << 6 & b7 | c8 << 7 & b8;
-        let r2 = c1 >> 1 & b1 | c2 << 0 & b2 | c3 << 1 & b3 | c4 << 2 & b4 | c5 << 3 & b5 | c6 << 4 & b6 | c7 << 5 & b7 | c8 << 6& b8;
-        let r3 = c1 >> 2 & b1 | c2 >> 1 & b2 | c3 << 0 & b3 | c4 << 1 & b4 | c5 << 2 & b5 | c6 << 3 & b6 | c7 << 4 & b7 | c8 << 5& b8;
-        let r4 = c1 >> 3 & b1 | c2 >> 2 & b2 | c3 >> 1 & b3 | c4 << 0 & b4 | c5 << 1 & b5 | c6 << 2 & b6 | c7 << 3 & b7 | c8 << 4& b8;
-        let r5 = c1 >> 4 & b1 | c2 >> 3 & b2 | c3 >> 2 & b3 | c4 >> 1 & b4 | c5 << 0 & b5 | c6 << 1 & b6 | c7 << 2 & b7 | c8 << 3& b8;
-        let r6 = c1 >> 5 & b1 | c2 >> 4 & b2 | c3 >> 3 & b3 | c4 >> 2 & b4 | c5 >> 1 & b5 | c6 << 0 & b6 | c7 << 1 & b7 | c8 << 2& b8;
-        let r7 = c1 >> 6 & b1 | c2 >> 5 & b2 | c3 >> 4 & b3 | c4 >> 3 & b4 | c5 >> 2 & b5 | c6 >> 1 & b6 | c7 << 0 & b7 | c8 << 1& b8;
-        let r8 = c1 >> 7 & b1 | c2 >> 6 & b2 | c3 >> 5 & b3 | c4 >> 4 & b4 | c5 >> 3 & b5 | c6 >> 2 & b6 | c7 >> 1 & b7 | c8 << 0& b8;
+        let r2 = c1 >> 1 & b1 | c2 << 0 & b2 | c3 << 1 & b3 | c4 << 2 & b4 | c5 << 3 & b5 | c6 << 4 & b6 | c7 << 5 & b7 | c8 << 6 & b8;
+        let r3 = c1 >> 2 & b1 | c2 >> 1 & b2 | c3 << 0 & b3 | c4 << 1 & b4 | c5 << 2 & b5 | c6 << 3 & b6 | c7 << 4 & b7 | c8 << 5 & b8;
+        let r4 = c1 >> 3 & b1 | c2 >> 2 & b2 | c3 >> 1 & b3 | c4 << 0 & b4 | c5 << 1 & b5 | c6 << 2 & b6 | c7 << 3 & b7 | c8 << 4 & b8;
+        let r5 = c1 >> 4 & b1 | c2 >> 3 & b2 | c3 >> 2 & b3 | c4 >> 1 & b4 | c5 << 0 & b5 | c6 << 1 & b6 | c7 << 2 & b7 | c8 << 3 & b8;
+        let r6 = c1 >> 5 & b1 | c2 >> 4 & b2 | c3 >> 3 & b3 | c4 >> 2 & b4 | c5 >> 1 & b5 | c6 << 0 & b6 | c7 << 1 & b7 | c8 << 2 & b8;
+        let r7 = c1 >> 6 & b1 | c2 >> 5 & b2 | c3 >> 4 & b3 | c4 >> 3 & b4 | c5 >> 2 & b5 | c6 >> 1 & b6 | c7 << 0 & b7 | c8 << 1 & b8;
+        let r8 = c1 >> 7 & b1 | c2 >> 6 & b2 | c3 >> 5 & b3 | c4 >> 4 & b4 | c5 >> 3 & b5 | c6 >> 2 & b6 | c7 >> 1 & b7 | c8 << 0 & b8;
         Self::with_rows(r1, r2, r3, r4, r5, r6, r7, r8)
     }
 

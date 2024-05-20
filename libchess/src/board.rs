@@ -258,6 +258,47 @@ impl ChessBoard {
         self.blacks &= neg;
     }
 
+    pub fn pos_attacker_cnt<AtkBy : TTeam>(&self, pos : Position) -> u8{
+        let world = self.whites | self.blacks;
+        let enemies = self.team_pieces::<AtkBy>();
+
+        // We project the attackers from the attacked spot
+        // And then check if any enemy pieces exist within
+        // those spots
+
+        let moves_as_rook = movement::rook_moves(pos, world);
+        let moves_as_bish = movement::bishop_moves(pos, world);
+        let moves_as_knight = movement::knight_moves(pos);
+        let moves_as_king = movement::king_moves(pos);
+        let moves_as_queen = movement::queen_moves(pos, world);
+        // Project pawn attacks out
+        let moves_from_pawn = movement::pawn_attackers::<AtkBy::Enemy>(pos);
+
+        // we have rooklikes and bishlikes, as queens act as a rook and bishop
+        // this saves a movement::queen_moves call
+        // let rooklikes = (self.rooks | self.queens) & enemies;
+        // let bishlikes = (self.bishops | self.queens) & enemies;
+        let knights = self.knights & enemies;
+        let kings = self.kings & enemies;
+        let pawns = self.pawns & enemies;
+        let rooks = self.rooks & enemies;
+        let bishops = self.bishops & enemies;
+        let queens = self.queens & enemies;
+
+        let killer_rooks = moves_as_rook & rooks;
+        let killer_bishes = moves_as_bish & bishops;
+        let killer_knights = moves_as_knight & knights;
+        let killer_kings = moves_as_king & kings;
+        let killer_pawns = moves_from_pawn & pawns;
+        let killer_queens = moves_as_queen & queens;
+
+        (killer_knights
+            | killer_bishes
+            | killer_rooks
+            | killer_kings
+            | killer_pawns
+            | killer_queens).count()
+    }
     pub fn is_pos_attacked<AtkBy: TTeam>(&self, pos: Position) -> bool {
         let world = self.whites | self.blacks;
         let enemies = self.team_pieces::<AtkBy>();

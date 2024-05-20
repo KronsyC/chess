@@ -3,7 +3,7 @@ members = [
   "libchess",
   "perft",
   "positioning"
-]
+, "simulator"]
 
 resolver = "2"
 

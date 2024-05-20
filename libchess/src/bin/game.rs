@@ -1,6 +1,15 @@
 fn main() {
 
-    // let mut chess = Game::default();
+    let mut chess = libchess::game::Game::default();
+
+    let mut mb = Vec::new();
+
+    println!("{}", chess.to_fen_str());
+    let moves = chess.get_all_moves(&mut mb).unwrap();
+
+    for m in moves{
+        println!("Move: {m:?}");
+    }
     //
     // let mut mb = Vec::new();
     //

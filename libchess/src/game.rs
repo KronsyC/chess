@@ -195,7 +195,7 @@ impl Game {
         let ep = if self.enpassant.empty() {
             "-".to_owned()
         } else {
-            self.enpassant.piece_position().as_alphanum()
+            self.enpassant.piece_position().as_alphanum().to_lowercase()
         };
 
         format!(
@@ -253,26 +253,29 @@ impl Game {
         Some(hash)
     }
 
-    fn check_checkmated<T: TTeam>(&self) -> bool {
-        let enemy_king = match T::TEAM {
-            Team::White => self.board.pieces::<GBlack, GKing>(),
-            Team::Black => self.board.pieces::<GWhite, GKing>(),
+    fn check_checkmated<Target: TTeam>(&self) -> bool {
+        let target_king = match Target::TEAM {
+            Team::White => self.board.pieces::<GWhite, GKing>(),
+            Team::Black => self.board.pieces::<GBlack, GKing>(),
         }
         .piece_position();
 
-        let check = match T::TEAM {
-            Team::White => self.board.is_pos_attacked::<GWhite>(enemy_king),
-            Team::Black => self.board.is_pos_attacked::<GBlack>(enemy_king),
+        let check = match Target::TEAM {
+            Team::White => self.board.is_pos_attacked::<GBlack>(target_king),
+            Team::Black => self.board.is_pos_attacked::<GWhite>(target_king),
         };
-        let king_moves = match T::TEAM {
+        let king_moves = match Target::TEAM {
             Team::White => self
                 .board
-                .get_piece_legal_moves::<GBlack, GKing>(enemy_king),
+                .get_piece_legal_moves::<GWhite, GKing>(target_king),
             Team::Black => self
                 .board
-                .get_piece_legal_moves::<GWhite, GKing>(enemy_king),
+                .get_piece_legal_moves::<GBlack, GKing>(target_king),
         };
 
+        // We do not have to care for castling at all 
+        // this is because castling rules dictate that you cannot 
+        // castle when in check anyway
         check && king_moves.empty()
     }
 
@@ -296,7 +299,7 @@ impl Game {
             },
             (Black, Rook) => match to.integral() {
                 56 => self.castling.unset_black_queenside(),
-                63 => self.castling.unset_white_kingside(),
+                63 => self.castling.unset_black_kingside(),
                 _ => {}
             },
             (_, _) => {}
@@ -429,7 +432,7 @@ impl Game {
     ) {
         match gmove {
             GameMove::Regular(mov) => {
-                assert_eq!(
+                debug_assert_eq!(
                     self.board.get_piece_info(mov.to),
                     None,
                     "Regular move goes to empty square"
@@ -836,11 +839,11 @@ impl Game {
             )
         };
 
-        if castle_ks && world.where_also(ks_clears).empty() {
+        if castle_ks && (world & ks_clears).empty() {
             // Make sure we are not under attack
             let attacked = ks_safes
                 .positions()
-                .all(|pos| self.board.is_pos_attacked::<T::Enemy>(pos));
+                .any(|pos| self.board.is_pos_attacked::<T::Enemy>(pos));
 
             if !attacked {
                 move_buf.push(GameMove::CastleKingside(T::TEAM));
@@ -850,7 +853,7 @@ impl Game {
             // Make sure we are not under attack
             let attacked = qs_safes
                 .positions()
-                .all(|pos| self.board.is_pos_attacked::<T::Enemy>(pos));
+                .any(|pos| self.board.is_pos_attacked::<T::Enemy>(pos));
 
             if !attacked {
                 move_buf.push(GameMove::CastleQueenside(T::TEAM));
@@ -980,9 +983,60 @@ impl Game {
         };
         let pawn_attacks = unsafe { all_pawn_attacks.get_unchecked(piece.integral() as usize) };
 
+        // Enpassant related checks 
+        // We can use a few facts about enpassant for optimization 
+        // If the captured pawn is white, they will be on row 4, and the ep will be to row 3
+        // if the captured pawn is black, they will be on row 5, and the ep will be to row 6
         if !(*pawn_attacks & self.enpassant).empty() {
             let ep_idx = self.enpassant.piece_position();
-            move_buf.push(GameMove::Enpassant(RawMove::new(piece, ep_idx, info)));
+
+            let (captured_row, enpassant_row) = match T::Enemy::TEAM{
+                Team::White => ( Bitboard::ROW_4, Bitboard::ROW_3 ),
+                Team::Black => ( Bitboard::ROW_5, Bitboard::ROW_6 )
+            };
+
+            // Column along which the pawn is captured 
+            let cap_col = Bitboard::from_col(ep_idx.col());
+            let piece_pos = Bitboard::from(piece);
+
+
+
+            // Check for check 
+            // Remove this piece and the captured piece 
+            // if in check, illegal 
+            // otherwise, this is fine 
+
+            let mut tester = self.board;
+            let pawn_switch = (cap_col & (captured_row | enpassant_row)) | piece_pos;
+            let tt_switch = piece_pos | (cap_col & enpassant_row);
+            let et_switch = captured_row & cap_col;
+
+            tester.pawns ^= pawn_switch;
+            match T::TEAM{
+                Team::White => {
+                    tester.whites ^= tt_switch;
+                    tester.blacks ^= et_switch;
+                },
+                Team::Black => {
+                    tester.blacks ^= tt_switch;
+                    tester.whites ^= et_switch;
+                }
+            };
+
+            let is_checked = match T::TEAM{
+                Team::White => {
+                    let my_king = (tester.whites & tester.kings).piece_position();
+                    tester.is_pos_attacked::<GBlack>(my_king)
+                },
+                Team::Black => {
+                    let my_king = (tester.blacks & tester.kings).piece_position();
+                    tester.is_pos_attacked::<GWhite>(my_king)
+                },
+            };
+
+            if !is_checked{
+                move_buf.push(GameMove::Enpassant(RawMove::new(piece, ep_idx, info)));
+            }
         }
 
         let captures = legals & enemies;
@@ -1088,6 +1142,7 @@ impl Game {
             Team::Black => self.board.blacks,
         };
 
+
         let pawns = bb & self.board.pawns;
         let rooks = bb & self.board.rooks;
         let knights = bb & self.board.knights;
@@ -1113,6 +1168,7 @@ impl Game {
         for pos in bishops.positions() {
             self.get_bishop_moves::<T>(pos, move_buf);
         }
+
 
         move_buf
     }
